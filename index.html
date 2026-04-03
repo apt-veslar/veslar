@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gestione Appartamenti Montagna</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+:root {
+  --bg: #ffffff; --bg-sec: #f5f5f3; --bg-ter: #eeede9;
+  --text: #1a1a18; --text-sec: #666660; --text-ter: #999992;
+  --border: rgba(0,0,0,0.12); --border-sec: rgba(0,0,0,0.22);
+  --radius: 8px; --radius-lg: 12px;
+  --apt1: #1D9E75; --apt1-bg: #E1F5EE; --apt1-text: #0F6E56;
+  --apt2: #378ADD; --apt2-bg: #E6F1FB; --apt2-text: #185FA5;
+  --airbnb-bg: #FCEBEB; --airbnb-text: #A32D2D; --airbnb-dot: #E24B4A;
+  --booking-bg: #E6F1FB; --booking-text: #0C447C; --booking-dot: #378ADD;
+  --manual-bg: #EAF3DE; --manual-text: #3B6D11; --manual-dot: #639922;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1c1c1a; --bg-sec: #252523; --bg-ter: #2e2e2c;
+    --text: #f0efea; --text-sec: #a0a09a; --text-ter: #6a6a64;
+    --border: rgba(255,255,255,0.1); --border-sec: rgba(255,255,255,0.2);
+    --apt1-bg: #085041; --apt1-text: #9FE1CB;
+    --apt2-bg: #0C447C; --apt2-text: #B5D4F4;
+    --airbnb-bg: #501313; --airbnb-text: #F7C1C1;
+    --booking-bg: #042C53; --booking-text: #B5D4F4;
+    --manual-bg: #173404; --manual-text: #C0DD97;
+  }
+}
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg-ter); color: var(--text); font-size: 15px; min-height: 100vh; }
+
+/* LOGIN SCREEN */
+#login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg-ter); }
+.login-card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 2.5rem 2rem; width: 360px; max-width: 95vw; text-align: center; }
+.login-icon { font-size: 36px; margin-bottom: 1rem; }
+.login-title { font-size: 20px; font-weight: 700; margin-bottom: 6px; }
+.login-sub { font-size: 13px; color: var(--text-sec); margin-bottom: 2rem; line-height: 1.5; }
+.btn-google { display: flex; align-items: center; justify-content: center; gap: 10px; width: 100%; padding: 11px 20px; border-radius: var(--radius); border: 0.5px solid var(--border-sec); background: var(--bg); color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.btn-google:hover { background: var(--bg-sec); }
+.google-logo { width: 18px; height: 18px; flex-shrink: 0; }
+.login-note { font-size: 11px; color: var(--text-ter); margin-top: 1.25rem; line-height: 1.5; }
+
+/* APP */
+#app-screen { display: none; }
+.header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 0.85rem 1.5rem; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+.header-left { display: flex; align-items: center; gap: 12px; }
+.header-title { font-size: 17px; font-weight: 700; }
+.header-sub { font-size: 12px; color: var(--text-sec); margin-top: 1px; }
+.user-area { display: flex; align-items: center; gap: 10px; }
+.user-avatar { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; border: 0.5px solid var(--border); }
+.user-avatar-fallback { width: 30px; height: 30px; border-radius: 50%; background: var(--apt1-bg); color: var(--apt1-text); display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+.user-name { font-size: 13px; color: var(--text-sec); }
+
+.container { max-width: 960px; margin: 0 auto; padding: 1.5rem; }
+.tabs { display: flex; gap: 2px; background: var(--bg-sec); border-radius: var(--radius); padding: 3px; margin-bottom: 1.5rem; overflow-x: auto; }
+.tab { padding: 7px 16px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; background: none; color: var(--text-sec); border-radius: 6px; white-space: nowrap; }
+.tab.active { background: var(--bg); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+.tab:hover:not(.active) { color: var(--text); }
+.section { display: none; }
+.section.active { display: block; }
+
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1rem; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 1rem; }
+@media(max-width:640px) { .grid2 { grid-template-columns: 1fr; } .grid4 { grid-template-columns: 1fr 1fr; } }
+
+.metric { background: var(--bg-sec); border-radius: var(--radius); padding: 1rem; }
+.metric-label { font-size: 12px; color: var(--text-sec); margin-bottom: 4px; }
+.metric-value { font-size: 22px; font-weight: 700; }
+.metric-sub { font-size: 11px; color: var(--text-ter); margin-top: 2px; }
+
+.card { background: var(--bg); border: 0.5px solid var(--border); border-radius: var(--radius-lg); padding: 1rem 1.25rem; margin-bottom: 1rem; }
+.card-title { font-size: 14px; font-weight: 600; margin-bottom: 1rem; display: flex; align-items: center; gap: 8px; }
+
+.badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.badge-apt1 { background: var(--apt1-bg); color: var(--apt1-text); }
+.badge-apt2 { background: var(--apt2-bg); color: var(--apt2-text); }
+.badge-airbnb { background: var(--airbnb-bg); color: var(--airbnb-text); }
+.badge-booking { background: var(--booking-bg); color: var(--booking-text); }
+.badge-manual { background: var(--manual-bg); color: var(--manual-text); }
+
+.btn { padding: 7px 16px; border-radius: var(--radius); border: 0.5px solid var(--border-sec); background: none; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text); transition: background 0.15s; }
+.btn:hover { background: var(--bg-sec); }
+.btn-primary { background: var(--text); color: var(--bg); border-color: var(--text); }
+.btn-primary:hover { opacity: 0.85; }
+.btn-sm { padding: 5px 12px; font-size: 12px; }
+.btn-danger { color: var(--airbnb-text); border-color: var(--airbnb-dot); }
+.btn-danger:hover { background: var(--airbnb-bg); }
+.btn-logout { font-size: 12px; padding: 4px 10px; color: var(--text-sec); }
+
+.cal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; flex-wrap: wrap; gap: 8px; }
+.cal-nav { display: flex; gap: 8px; align-items: center; }
+.cal-month { font-size: 16px; font-weight: 600; min-width: 160px; text-align: center; }
+.cal-legend { display: flex; gap: 16px; flex-wrap: wrap; }
+.cal-legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-sec); }
+.cal-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.apt-tabs { display: flex; gap: 8px; margin-bottom: 1rem; }
+.apt-tab { padding: 6px 16px; font-size: 13px; cursor: pointer; border-radius: 20px; border: 0.5px solid var(--border-sec); background: none; color: var(--text-sec); font-weight: 500; }
+.apt-tab.active-apt1 { background: var(--apt1-bg); color: var(--apt1-text); border-color: var(--apt1); }
+.apt-tab.active-apt2 { background: var(--apt2-bg); color: var(--apt2-text); border-color: var(--apt2); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.cal-day-name { text-align: center; font-size: 11px; color: var(--text-ter); padding: 4px 0; font-weight: 600; letter-spacing: 0.03em; }
+.cal-day { min-height: 68px; border-radius: 6px; border: 0.5px solid var(--border); padding: 4px 5px; cursor: pointer; background: var(--bg); }
+.cal-day:hover { border-color: var(--border-sec); }
+.cal-day.other-month { opacity: 0.3; background: var(--bg-sec); }
+.cal-day.today { border-color: var(--text); border-width: 1.5px; }
+.cal-day.occupied { background: var(--bg-sec); }
+.cal-day-num { font-size: 12px; color: var(--text-sec); font-weight: 500; }
+.cal-booking { font-size: 10px; padding: 1px 5px; border-radius: 3px; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
+.cal-booking.airbnb { background: var(--airbnb-bg); color: var(--airbnb-text); }
+.cal-booking.booking { background: var(--booking-bg); color: var(--booking-text); }
+.cal-booking.manual { background: var(--manual-bg); color: var(--manual-text); }
+
+.booking-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; flex-wrap: wrap; }
+.booking-row:last-child { border-bottom: none; }
+.booking-guest { font-weight: 600; flex: 1; min-width: 100px; }
+.booking-dates { color: var(--text-sec); font-size: 12px; }
+.booking-amount { font-weight: 600; white-space: nowrap; }
+
+.price-row { display: flex; justify-content: space-between; align-items: center; padding: 9px 0; border-bottom: 0.5px solid var(--border); font-size: 13px; gap: 8px; }
+.price-row:last-child { border-bottom: none; }
+.price-input { width: 90px; padding: 6px 8px; border: 0.5px solid var(--border-sec); border-radius: var(--radius); font-size: 13px; text-align: right; background: var(--bg); color: var(--text); }
+.price-input:focus { outline: none; border-color: var(--text-sec); }
+.price-unit { font-size: 11px; color: var(--text-ter); flex-shrink: 0; }
+
+.ical-box { background: var(--bg-sec); border-radius: var(--radius); padding: 1rem; }
+.ical-input { width: 100%; padding: 7px 10px; border: 0.5px solid var(--border-sec); border-radius: var(--radius); font-size: 12px; background: var(--bg); color: var(--text); margin-top: 5px; font-family: monospace; }
+.ical-input:focus { outline: none; border-color: var(--text-sec); }
+.ical-step { font-size: 11px; color: var(--text-sec); margin: 5px 0; line-height: 1.5; background: var(--bg); border-radius: 6px; padding: 6px 8px; border-left: 2px solid var(--border-sec); }
+.info-box { background: var(--apt2-bg); color: var(--apt2-text); border-radius: var(--radius); padding: 10px 14px; font-size: 13px; margin-bottom: 1rem; line-height: 1.6; }
+
+.bar-chart { display: flex; align-items: flex-end; gap: 6px; height: 110px; }
+.bar-group { flex: 1; display: flex; gap: 2px; align-items: flex-end; }
+.bar { flex: 1; border-radius: 3px 3px 0 0; min-height: 4px; transition: opacity 0.15s; cursor: pointer; }
+.bar:hover { opacity: 0.75; }
+.bar-label { flex: 1; text-align: center; font-size: 10px; color: var(--text-ter); margin-top: 4px; }
+.legend-row { display: flex; gap: 16px; margin-bottom: 8px; }
+.legend-item { display: flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-sec); }
+.legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center; padding: 1rem; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--bg); border-radius: var(--radius-lg); border: 0.5px solid var(--border); padding: 1.5rem; width: 380px; max-width: 100%; }
+.modal-title { font-size: 16px; font-weight: 700; margin-bottom: 1.25rem; }
+.form-row { margin-bottom: 12px; }
+.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.form-label { font-size: 12px; color: var(--text-sec); font-weight: 500; margin-bottom: 4px; display: block; }
+.form-input { width: 100%; padding: 8px 10px; border: 0.5px solid var(--border-sec); border-radius: var(--radius); font-size: 14px; background: var(--bg); color: var(--text); }
+.form-input:focus { outline: none; border-color: var(--text-sec); }
+select.form-input { cursor: pointer; }
+.form-actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 1.25rem; }
+
+.filter-bar { display: flex; gap: 8px; margin-bottom: 1rem; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.filter-select { padding: 6px 10px; border: 0.5px solid var(--border-sec); border-radius: var(--radius); font-size: 13px; background: var(--bg); color: var(--text); cursor: pointer; }
+.empty { color: var(--text-ter); font-size: 13px; padding: 1.5rem 0; text-align: center; }
+.loading { color: var(--text-ter); font-size: 13px; padding: 1rem 0; text-align: center; }
+
+.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: var(--radius); font-size: 13px; font-weight: 500; z-index: 200; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+.toast.show { opacity: 1; }
+.saving-indicator { font-size: 11px; color: var(--text-ter); display: none; }
+.saving-indicator.show { display: inline; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-icon">🏔️</div>
+    <div class="login-title">Gestione Appartamenti</div>
+    <div class="login-sub">Accedi con il tuo account Google per visualizzare e gestire le tue prenotazioni in sicurezza.</div>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <svg class="google-logo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Accedi con Google
+    </button>
+    <div class="login-note">I tuoi dati sono privati e visibili solo al tuo account Google.</div>
+    <div id="login-error" style="color:#A32D2D;font-size:12px;margin-top:12px;display:none;"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="header">
+    <div class="header-left">
+      <div>
+        <div class="header-title">🏔️ Gestione Appartamenti</div>
+        <div class="header-sub">Montagna · 2 proprietà <span class="saving-indicator" id="saving-indicator">· salvataggio...</span></div>
+      </div>
+    </div>
+    <div class="user-area">
+      <div id="user-avatar-wrap"></div>
+      <span class="user-name" id="user-name-label"></span>
+      <button class="btn btn-sm btn-logout" onclick="signOut()">Esci</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('dashboard',this)">Dashboard</button>
+      <button class="tab" onclick="showTab('calendario',this)">Calendario</button>
+      <button class="tab" onclick="showTab('prenotazioni',this)">Prenotazioni</button>
+      <button class="tab" onclick="showTab('prezzi',this)">Prezzi</button>
+      <button class="tab" onclick="showTab('sync',this)">Sincronizzazione</button>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard" class="section active">
+      <div class="grid4" id="metrics"><div class="loading">Caricamento...</div></div>
+      <div class="grid2">
+        <div class="card">
+          <div class="card-title">Ricavi mensili 2026</div>
+          <div class="legend-row">
+            <div class="legend-item"><div class="legend-dot" style="background:var(--apt1);"></div>Cima Rosa</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--apt2);"></div>Lago Blu</div>
+          </div>
+          <div class="bar-chart" id="bar-chart"></div>
+          <div style="display:flex;gap:6px;" id="bar-labels"></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Prossime prenotazioni</div>
+          <div id="upcoming-list"><div class="loading">Caricamento...</div></div>
+        </div>
+      </div>
+      <div class="grid2">
+        <div class="card"><div class="card-title">Apt. Cima Rosa <span class="badge badge-apt1">Apt 1</span></div><div id="apt1-stats"></div></div>
+        <div class="card"><div class="card-title">Apt. Lago Blu <span class="badge badge-apt2">Apt 2</span></div><div id="apt2-stats"></div></div>
+      </div>
+    </div>
+
+    <!-- CALENDARIO -->
+    <div id="tab-calendario" class="section">
+      <div class="cal-header">
+        <div class="cal-nav">
+          <button class="btn btn-sm" onclick="prevMonth()">&#8592;</button>
+          <div class="cal-month" id="cal-month-label"></div>
+          <button class="btn btn-sm" onclick="nextMonth()">&#8594;</button>
+        </div>
+        <div class="cal-legend">
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--airbnb-dot);"></div>Airbnb</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--booking-dot);"></div>Booking</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--manual-dot);"></div>Manuale</div>
+        </div>
+      </div>
+      <div class="apt-tabs">
+        <button class="apt-tab active-apt1" id="aptab1" onclick="setApt(1)">Cima Rosa (Apt 1)</button>
+        <button class="apt-tab" id="aptab2" onclick="setApt(2)">Lago Blu (Apt 2)</button>
+      </div>
+      <div class="card" style="padding:0.75rem;"><div class="cal-grid" id="cal-grid"></div></div>
+    </div>
+
+    <!-- PRENOTAZIONI -->
+    <div id="tab-prenotazioni" class="section">
+      <div class="filter-bar">
+        <div style="display:flex;gap:8px;">
+          <select class="filter-select" id="filter-apt" onchange="renderBookings()">
+            <option value="all">Tutti gli apt.</option>
+            <option value="1">Cima Rosa</option>
+            <option value="2">Lago Blu</option>
+          </select>
+          <select class="filter-select" id="filter-src" onchange="renderBookings()">
+            <option value="all">Tutte le fonti</option>
+            <option value="airbnb">Airbnb</option>
+            <option value="booking">Booking</option>
+            <option value="manual">Manuale</option>
+          </select>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="openModal()">+ Aggiungi</button>
+      </div>
+      <div class="card"><div id="bookings-list"><div class="loading">Caricamento...</div></div></div>
+    </div>
+
+    <!-- PREZZI -->
+    <div id="tab-prezzi" class="section">
+      <div class="grid2">
+        <div class="card"><div class="card-title">Cima Rosa <span class="badge badge-apt1">Apt 1</span></div><div id="prices-apt1"></div></div>
+        <div class="card"><div class="card-title">Lago Blu <span class="badge badge-apt2">Apt 2</span></div><div id="prices-apt2"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Tariffe extra</div>
+        <div class="price-row"><span>Pulizie</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="price-cleaning" value="60" min="0"><span class="price-unit">€/soggiorno</span></div></div>
+        <div class="price-row"><span>Caparra</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="price-deposit" value="200" min="0"><span class="price-unit">€</span></div></div>
+        <div style="margin-top:1rem;text-align:right;"><button class="btn btn-primary btn-sm" onclick="savePrices()">Salva tutte le tariffe</button></div>
+      </div>
+    </div>
+
+    <!-- SYNC -->
+    <div id="tab-sync" class="section">
+      <div class="info-box">ℹ️ Airbnb e Booking.com supportano la sincronizzazione tramite <strong>iCal</strong> — lo standard usato da tutti i software professionali. Copia il link iCal dalle rispettive piattaforme e incollalo qui. I link vengono salvati nel tuo account.</div>
+      <div class="grid2" style="margin-bottom:1rem;">
+        <div class="ical-box">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><div class="cal-legend-dot" style="background:var(--airbnb-dot);width:12px;height:12px;"></div><strong style="font-size:14px;">Airbnb</strong></div>
+          <div class="ical-step">Annuncio → Disponibilità → Collega calendari → Esporta calendario</div>
+          <div style="margin-top:10px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 1 – Cima Rosa</div>
+          <input class="ical-input" type="url" placeholder="https://www.airbnb.it/calendar/ical/..." id="ical-airbnb-1">
+          <div style="margin-top:8px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 2 – Lago Blu</div>
+          <input class="ical-input" type="url" placeholder="https://www.airbnb.it/calendar/ical/..." id="ical-airbnb-2">
+        </div>
+        <div class="ical-box">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><div class="cal-legend-dot" style="background:var(--booking-dot);width:12px;height:12px;"></div><strong style="font-size:14px;">Booking.com</strong></div>
+          <div class="ical-step">Extranet → Struttura → Calendario → Sincronizzazione calendari → Esporta</div>
+          <div style="margin-top:10px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 1 – Cima Rosa</div>
+          <input class="ical-input" type="url" placeholder="https://admin.booking.com/hotel/hoteladmin/ical.ics?..." id="ical-booking-1">
+          <div style="margin-top:8px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 2 – Lago Blu</div>
+          <input class="ical-input" type="url" placeholder="https://admin.booking.com/hotel/hoteladmin/ical.ics?..." id="ical-booking-2">
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:1.5rem;">
+        <button class="btn btn-primary" onclick="saveIcalLinks()">Salva link iCal</button>
+        <span id="sync-status" style="font-size:12px;color:var(--text-sec);"></span>
+      </div>
+      <div class="card">
+        <div class="card-title">Esporta il tuo calendario (.ics)</div>
+        <p style="font-size:13px;color:var(--text-sec);margin-bottom:1rem;">Scarica le prenotazioni come file iCal da importare in Google Calendar, Apple Calendar o altre piattaforme.</p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;">
+          <button class="btn btn-sm" onclick="exportIcal(1)">Esporta Apt 1 (Cima Rosa)</button>
+          <button class="btn btn-sm" onclick="exportIcal(2)">Esporta Apt 2 (Lago Blu)</button>
+          <button class="btn btn-sm" onclick="exportIcal(0)">Esporta tutto</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="modal">
+    <div class="modal-title">Nuova prenotazione</div>
+    <div class="form-row"><label class="form-label">Appartamento</label>
+      <select class="form-input" id="m-apt"><option value="1">Cima Rosa (Apt 1)</option><option value="2">Lago Blu (Apt 2)</option></select></div>
+    <div class="form-row"><label class="form-label">Nome ospite *</label><input class="form-input" id="m-guest" placeholder="Nome e cognome"></div>
+    <div class="form-row-2">
+      <div><label class="form-label">Check-in *</label><input class="form-input" id="m-checkin" type="date"></div>
+      <div><label class="form-label">Check-out *</label><input class="form-input" id="m-checkout" type="date"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">Importo totale (€)</label><input class="form-input" id="m-amount" type="number" placeholder="0" min="0"></div>
+      <div><label class="form-label">Fonte</label>
+        <select class="form-input" id="m-source"><option value="manual">Manuale</option><option value="airbnb">Airbnb</option><option value="booking">Booking</option></select></div>
+    </div>
+    <div class="form-row"><label class="form-label">Numero ospiti</label><input class="form-input" id="m-guests-num" type="number" placeholder="2" min="1"></div>
+    <div class="form-row"><label class="form-label">Note</label><input class="form-input" id="m-notes" placeholder="Richieste speciali, animali, ecc."></div>
+    <div class="form-actions">
+      <button class="btn btn-sm" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-primary btn-sm" onclick="saveBooking()">Salva prenotazione</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<!-- FIREBASE SDK -->
+<script type="module">
+import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
+import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
+import { getFirestore, doc, collection, getDocs, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyAbCejZ27wKUl2aNlZnqHMe1QqeLohKBzk",
+  authDomain: "apt-veslar.firebaseapp.com",
+  projectId: "apt-veslar",
+  storageBucket: "apt-veslar.firebasestorage.app",
+  messagingSenderId: "315440513290",
+  appId: "1:315440513290:web:04159ab6afe148cb97baf3"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+let currentUser = null;
+let bookings = [];
+let prices = { 1:{base:120,weekend:160,high:200,low:90}, 2:{base:100,weekend:140,high:170,low:80} };
+let extras = { cleaning:60, deposit:200 };
+let ical = { 'airbnb-1':'','airbnb-2':'','booking-1':'','booking-2':'' };
+let unsubBookings = null;
+
+const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const dayNames = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+let calYear = new Date().getFullYear(), calMonth = new Date().getMonth();
+let currentApt = 1;
+
+// ---- AUTH ----
+window.signInWithGoogle = async () => {
+  try {
+    const provider = new GoogleAuthProvider();
+    await signInWithPopup(auth, provider);
+  } catch(e) {
+    const el = document.getElementById('login-error');
+    el.style.display = 'block';
+    el.textContent = 'Errore di accesso: ' + e.message;
+  }
+};
+
+window.signOut = async () => {
+  if(unsubBookings) unsubBookings();
+  await fbSignOut(auth);
+};
+
+onAuthStateChanged(auth, async (user) => {
+  if(user) {
+    currentUser = user;
+    document.getElementById('login-screen').style.display = 'none';
+    document.getElementById('app-screen').style.display = 'block';
+    document.getElementById('user-name-label').textContent = user.displayName?.split(' ')[0] || '';
+    const avatarWrap = document.getElementById('user-avatar-wrap');
+    if(user.photoURL) {
+      avatarWrap.innerHTML = `<img src="${user.photoURL}" class="user-avatar" alt="">`;
+    } else {
+      const initials = (user.displayName||'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+      avatarWrap.innerHTML = `<div class="user-avatar-fallback">${initials}</div>`;
+    }
+    await loadSettings();
+    subscribeBookings();
+    renderDashboard();
+    renderPrices();
+  } else {
+    currentUser = null;
+    document.getElementById('login-screen').style.display = 'flex';
+    document.getElementById('app-screen').style.display = 'none';
+  }
+});
+
+// ---- FIRESTORE PATHS ----
+function userDoc(path) { return doc(db, 'users', currentUser.uid, ...path.split('/')); }
+function bookingsCol() { return collection(db, 'users', currentUser.uid, 'bookings'); }
+
+// ---- LOAD SETTINGS ----
+async function loadSettings() {
+  try {
+    const snap = await getDoc(userDoc('settings/main'));
+    if(snap.exists()) {
+      const d = snap.data();
+      if(d.prices) prices = d.prices;
+      if(d.extras) extras = d.extras;
+      if(d.ical) ical = d.ical;
+    }
+  } catch(e) { console.error('loadSettings', e); }
+}
+
+async function saveSettings() {
+  showSaving(true);
+  try {
+    await setDoc(userDoc('settings/main'), { prices, extras, ical });
+  } catch(e) { toast('Errore nel salvataggio'); }
+  showSaving(false);
+}
+
+// ---- BOOKINGS REALTIME ----
+function subscribeBookings() {
+  if(unsubBookings) unsubBookings();
+  const q = query(bookingsCol(), orderBy('checkin','desc'));
+  unsubBookings = onSnapshot(q, (snap) => {
+    bookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    renderDashboard();
+    renderBookings();
+    if(document.getElementById('tab-calendario').classList.contains('active')) renderCalendar();
+  }, (e) => { console.error('snapshot error', e); });
+}
+
+// ---- HELPERS ----
+function showSaving(v) { document.getElementById('saving-indicator').classList.toggle('show', v); }
+function fmtDate(d) { const dd=new Date(d); return dd.getDate()+'/'+(dd.getMonth()+1); }
+function fmtDateFull(d) { const dd=new Date(d); return dd.getDate()+' '+monthNames[dd.getMonth()].substr(0,3)+' '+dd.getFullYear(); }
+window.toast = function(msg) {
+  const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2500);
+};
+
+// ---- TABS ----
+window.showTab = function(t, btn) {
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(s=>s.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  if(btn) btn.classList.add('active');
+  if(t==='calendario') renderCalendar();
+  if(t==='dashboard') renderDashboard();
+  if(t==='prenotazioni') renderBookings();
+  if(t==='prezzi') renderPrices();
+  if(t==='sync') loadIcalInputs();
+};
+
+// ---- DASHBOARD ----
+function renderDashboard() {
+  const now = new Date();
+  const cm=now.getMonth(), cy=now.getFullYear();
+  const thisMonthBooks = bookings.filter(b=>{ const ci=new Date(b.checkin); return ci.getMonth()===cm&&ci.getFullYear()===cy; });
+  const revMonth = thisMonthBooks.reduce((s,b)=>s+Number(b.amount||0),0);
+  const nightsMonth = thisMonthBooks.reduce((s,b)=>s+Math.round((new Date(b.checkout)-new Date(b.checkin))/86400000),0);
+  const daysInMonth = new Date(cy,cm+1,0).getDate();
+  const occRate = Math.min(100,Math.round(nightsMonth/(daysInMonth*2)*100));
+
+  document.getElementById('metrics').innerHTML = `
+    <div class="metric"><div class="metric-label">Ricavi ${monthNames[cm].substring(0,3)}</div><div class="metric-value">€${revMonth.toLocaleString('it')}</div><div class="metric-sub">questo mese</div></div>
+    <div class="metric"><div class="metric-label">Notti prenotate</div><div class="metric-value">${nightsMonth}</div><div class="metric-sub">${monthNames[cm]}</div></div>
+    <div class="metric"><div class="metric-label">Tasso occupazione</div><div class="metric-value">${occRate}%</div><div class="metric-sub">media 2 apt</div></div>
+    <div class="metric"><div class="metric-label">Prenotazioni totali</div><div class="metric-value">${bookings.length}</div><div class="metric-sub">tutti gli anni</div></div>`;
+
+  const months=['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+  const maxRev=Math.max(...months.map((_,i)=>bookings.filter(b=>new Date(b.checkin).getMonth()===i&&new Date(b.checkin).getFullYear()===cy).reduce((s,b)=>s+Number(b.amount||0),0)),1);
+  document.getElementById('bar-chart').innerHTML=months.map((_,i)=>{
+    const r1=bookings.filter(b=>b.apt===1&&new Date(b.checkin).getMonth()===i&&new Date(b.checkin).getFullYear()===cy).reduce((s,b)=>s+Number(b.amount||0),0);
+    const r2=bookings.filter(b=>b.apt===2&&new Date(b.checkin).getMonth()===i&&new Date(b.checkin).getFullYear()===cy).reduce((s,b)=>s+Number(b.amount||0),0);
+    return `<div class="bar-group"><div class="bar" style="height:${Math.max(Math.round(r1/maxRev*100),4)}px;background:var(--apt1);" title="Cima Rosa: €${r1}"></div><div class="bar" style="height:${Math.max(Math.round(r2/maxRev*100),4)}px;background:var(--apt2);" title="Lago Blu: €${r2}"></div></div>`;
+  }).join('');
+  document.getElementById('bar-labels').innerHTML=months.map(m=>`<div class="bar-label">${m}</div>`).join('');
+
+  const upcoming=[...bookings].filter(b=>new Date(b.checkin)>=now).sort((a,b)=>new Date(a.checkin)-new Date(b.checkin)).slice(0,5);
+  document.getElementById('upcoming-list').innerHTML=upcoming.length?upcoming.map(b=>`
+    <div class="booking-row">
+      <span class="badge badge-${b.source}">${b.source}</span>
+      <span class="badge badge-apt${b.apt}">Apt ${b.apt}</span>
+      <span class="booking-guest">${b.guest}</span>
+      <span class="booking-dates">${fmtDate(b.checkin)} → ${fmtDate(b.checkout)}</span>
+      <span class="booking-amount">€${Number(b.amount||0).toLocaleString('it')}</span>
+    </div>`).join(''):'<div class="empty">Nessuna prenotazione futura</div>';
+
+  [1,2].forEach(a=>{
+    const ab=bookings.filter(b=>b.apt===a);
+    const rev=ab.reduce((s,b)=>s+Number(b.amount||0),0);
+    const nights=ab.reduce((s,b)=>s+Math.round((new Date(b.checkout)-new Date(b.checkin))/86400000),0);
+    document.getElementById('apt'+a+'-stats').innerHTML=`
+      <div class="price-row"><span style="color:var(--text-sec);">Ricavi totali</span><strong>€${rev.toLocaleString('it')}</strong></div>
+      <div class="price-row"><span style="color:var(--text-sec);">Notti prenotate</span><strong>${nights}</strong></div>
+      <div class="price-row"><span style="color:var(--text-sec);">Prenotazioni</span><strong>${ab.length}</strong></div>
+      <div class="price-row" style="border:none;"><span style="color:var(--text-sec);">Media per notte</span><strong>${nights?'€'+Math.round(rev/nights):'-'}</strong></div>`;
+  });
+}
+
+// ---- CALENDAR ----
+window.setApt=function(n){currentApt=n;document.getElementById('aptab1').className='apt-tab'+(n===1?' active-apt1':'');document.getElementById('aptab2').className='apt-tab'+(n===2?' active-apt2':'');renderCalendar();};
+window.prevMonth=function(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();};
+window.nextMonth=function(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();};
+
+function renderCalendar(){
+  document.getElementById('cal-month-label').textContent=monthNames[calMonth]+' '+calYear;
+  const firstDay=new Date(calYear,calMonth,1);
+  let startDow=firstDay.getDay();startDow=startDow===0?6:startDow-1;
+  const daysInMonth=new Date(calYear,calMonth+1,0).getDate();
+  const daysInPrev=new Date(calYear,calMonth,0).getDate();
+  const today=new Date();
+  let html=dayNames.map(d=>`<div class="cal-day-name">${d}</div>`).join('');
+  for(let i=0;i<startDow;i++) html+=`<div class="cal-day other-month"><div class="cal-day-num">${daysInPrev-startDow+i+1}</div></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+    const isToday=new Date(ds).toDateString()===today.toDateString();
+    const dayBooks=bookings.filter(b=>b.apt===currentApt&&ds>=b.checkin&&ds<b.checkout);
+    const bHtml=dayBooks.map(b=>`<div class="cal-booking ${b.source}">${b.guest.split(' ')[0]}</div>`).join('');
+    html+=`<div class="cal-day${isToday?' today':''}${dayBooks.length?' occupied':''}"><div class="cal-day-num">${d}</div>${bHtml}</div>`;
+  }
+  const total=startDow+daysInMonth;const rem=total%7===0?0:7-(total%7);
+  for(let i=1;i<=rem;i++) html+=`<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
+  document.getElementById('cal-grid').innerHTML=html;
+}
+
+// ---- BOOKINGS LIST ----
+function renderBookings(){
+  const aptF=document.getElementById('filter-apt')?.value||'all';
+  const srcF=document.getElementById('filter-src')?.value||'all';
+  let filtered=bookings.filter(b=>(aptF==='all'||b.apt===parseInt(aptF))&&(srcF==='all'||b.source===srcF));
+  filtered.sort((a,b)=>new Date(b.checkin)-new Date(a.checkin));
+  const srcLabel={airbnb:'Airbnb',booking:'Booking',manual:'Manuale'};
+  const el=document.getElementById('bookings-list');
+  if(!el) return;
+  el.innerHTML=filtered.length?filtered.map(b=>`
+    <div class="booking-row">
+      <span class="badge badge-${b.source}">${srcLabel[b.source]||b.source}</span>
+      <span class="badge badge-apt${b.apt}">Apt ${b.apt}</span>
+      <span class="booking-guest">${b.guest}</span>
+      <span class="booking-dates">${fmtDateFull(b.checkin)} → ${fmtDateFull(b.checkout)}</span>
+      <span class="booking-amount">€${Number(b.amount||0).toLocaleString('it')}</span>
+      ${b.notes?`<span style="font-size:11px;color:var(--text-ter);">${b.notes}</span>`:''}
+      <button class="btn btn-sm btn-danger" onclick="deleteBooking('${b.id}')">✕</button>
+    </div>`).join(''):'<div class="empty">Nessuna prenotazione trovata</div>';
+}
+
+// ---- MODAL ----
+window.openModal=function(){
+  document.getElementById('m-checkin').value=new Date().toISOString().split('T')[0];
+  document.getElementById('m-checkout').value='';
+  document.getElementById('m-guest').value='';
+  document.getElementById('m-amount').value='';
+  document.getElementById('m-notes').value='';
+  document.getElementById('m-guests-num').value='';
+  document.getElementById('modal-overlay').classList.add('open');
+};
+window.closeModal=function(){ document.getElementById('modal-overlay').classList.remove('open'); };
+
+window.saveBooking=async function(){
+  const guest=document.getElementById('m-guest').value.trim();
+  const checkin=document.getElementById('m-checkin').value;
+  const checkout=document.getElementById('m-checkout').value;
+  const amount=parseFloat(document.getElementById('m-amount').value)||0;
+  if(!guest){alert('Inserisci il nome dell\'ospite.');return;}
+  if(!checkin||!checkout){alert('Inserisci le date.');return;}
+  if(new Date(checkout)<=new Date(checkin)){alert('Il check-out deve essere dopo il check-in.');return;}
+  showSaving(true);
+  try {
+    await addDoc(bookingsCol(),{
+      apt:parseInt(document.getElementById('m-apt').value),
+      guest, checkin, checkout, amount,
+      source:document.getElementById('m-source').value,
+      notes:document.getElementById('m-notes').value,
+      guestsNum:parseInt(document.getElementById('m-guests-num').value)||0,
+      createdAt: new Date().toISOString()
+    });
+    closeModal();
+    toast('Prenotazione salvata!');
+  } catch(e){ toast('Errore: '+e.message); }
+  showSaving(false);
+};
+
+window.deleteBooking=async function(id){
+  if(!confirm('Eliminare questa prenotazione?')) return;
+  showSaving(true);
+  try {
+    await deleteDoc(doc(db,'users',currentUser.uid,'bookings',id));
+    toast('Prenotazione eliminata');
+  } catch(e){ toast('Errore: '+e.message); }
+  showSaving(false);
+};
+
+// ---- PRICES ----
+function renderPrices(){
+  [1,2].forEach(a=>{
+    const p=prices[a]||{base:120,weekend:160,high:200,low:90};
+    document.getElementById('prices-apt'+a).innerHTML=`
+      <div class="price-row"><span>Tariffa base (giorni settimana)</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="p${a}-base" value="${p.base}" min="0"><span class="price-unit">€/notte</span></div></div>
+      <div class="price-row"><span>Weekend (ven–sab)</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="p${a}-weekend" value="${p.weekend}" min="0"><span class="price-unit">€/notte</span></div></div>
+      <div class="price-row"><span>Alta stagione</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="p${a}-high" value="${p.high}" min="0"><span class="price-unit">€/notte</span></div></div>
+      <div class="price-row"><span>Bassa stagione</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="p${a}-low" value="${p.low}" min="0"><span class="price-unit">€/notte</span></div></div>`;
+  });
+  document.getElementById('price-cleaning').value=extras.cleaning||60;
+  document.getElementById('price-deposit').value=extras.deposit||200;
+}
+
+window.savePrices=async function(){
+  [1,2].forEach(a=>{
+    prices[a]={
+      base:parseInt(document.getElementById('p'+a+'-base').value)||0,
+      weekend:parseInt(document.getElementById('p'+a+'-weekend').value)||0,
+      high:parseInt(document.getElementById('p'+a+'-high').value)||0,
+      low:parseInt(document.getElementById('p'+a+'-low').value)||0
+    };
+  });
+  extras.cleaning=parseInt(document.getElementById('price-cleaning').value)||0;
+  extras.deposit=parseInt(document.getElementById('price-deposit').value)||0;
+  await saveSettings();
+  toast('Tariffe salvate!');
+};
+
+// ---- ICAL ----
+function loadIcalInputs(){
+  ['airbnb-1','airbnb-2','booking-1','booking-2'].forEach(k=>{
+    const el=document.getElementById('ical-'+k);
+    if(el) el.value=ical[k]||'';
+  });
+}
+
+window.saveIcalLinks=async function(){
+  ['airbnb-1','airbnb-2','booking-1','booking-2'].forEach(k=>{
+    const el=document.getElementById('ical-'+k);
+    if(el) ical[k]=el.value.trim();
+  });
+  await saveSettings();
+  document.getElementById('sync-status').textContent='Salvato — '+new Date().toLocaleTimeString('it');
+  toast('Link iCal salvati!');
+};
+
+window.exportIcal=function(apt){
+  const toExport=apt===0?bookings:bookings.filter(b=>b.apt===apt);
+  const aptName=apt===0?'tutti':apt===1?'cima-rosa':'lago-blu';
+  let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gestione Appartamenti Montagna//IT\r\nCALSCALE:GREGORIAN\r\n';
+  toExport.forEach(b=>{
+    const now=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
+    ics+=`BEGIN:VEVENT\r\nUID:${b.id}@apt-montagna\r\nDTSTAMP:${now}\r\nSUMMARY:${b.guest} (${b.source})\r\nDTSTART;VALUE=DATE:${b.checkin.replace(/-/g,'')}\r\nDTEND;VALUE=DATE:${b.checkout.replace(/-/g,'')}\r\n${b.notes?'DESCRIPTION:'+b.notes+'\r\n':''}END:VEVENT\r\n`;
+  });
+  ics+='END:VCALENDAR';
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([ics],{type:'text/calendar;charset=utf-8'}));
+  a.download=`prenotazioni-apt-${aptName}.ics`;
+  a.click();
+  toast('File .ics scaricato!');
+};
+</script>
+</body>
+</html>
