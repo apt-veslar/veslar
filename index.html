@@ -211,8 +211,8 @@ select.form-input { cursor: pointer; }
         <div class="card">
           <div class="card-title">Ricavi mensili 2026</div>
           <div class="legend-row">
-            <div class="legend-item"><div class="legend-dot" style="background:var(--apt1);"></div>Cima Rosa</div>
-            <div class="legend-item"><div class="legend-dot" style="background:var(--apt2);"></div>Lago Blu</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--apt1);"></div>Olbe</div>
+            <div class="legend-item"><div class="legend-dot" style="background:var(--apt2);"></div>Poch</div>
           </div>
           <div class="bar-chart" id="bar-chart"></div>
           <div style="display:flex;gap:6px;" id="bar-labels"></div>
@@ -223,8 +223,8 @@ select.form-input { cursor: pointer; }
         </div>
       </div>
       <div class="grid2">
-        <div class="card"><div class="card-title">Apt. Cima Rosa <span class="badge badge-apt1">Apt 1</span></div><div id="apt1-stats"></div></div>
-        <div class="card"><div class="card-title">Apt. Lago Blu <span class="badge badge-apt2">Apt 2</span></div><div id="apt2-stats"></div></div>
+        <div class="card"><div class="card-title">Apt. Olbe <span class="badge badge-apt1">Apt 1</span></div><div id="apt1-stats"></div></div>
+        <div class="card"><div class="card-title">Apt. Poch <span class="badge badge-apt2">Apt 2</span></div><div id="apt2-stats"></div></div>
       </div>
     </div>
 
@@ -240,11 +240,14 @@ select.form-input { cursor: pointer; }
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--airbnb-dot);"></div>Airbnb</div>
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--booking-dot);"></div>Booking</div>
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--manual-dot);"></div>Manuale</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--apt1);"></div>Olbe</div>
+          <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--apt2);"></div>Poch</div>
         </div>
       </div>
       <div class="apt-tabs">
-        <button class="apt-tab active-apt1" id="aptab1" onclick="setApt(1)">Cima Rosa (Apt 1)</button>
-        <button class="apt-tab" id="aptab2" onclick="setApt(2)">Lago Blu (Apt 2)</button>
+        <button class="apt-tab active-apt1" id="aptab1" onclick="setApt(1)">Olbe (Apt 1)</button>
+        <button class="apt-tab" id="aptab2" onclick="setApt(2)">Poch (Apt 2)</button>
+        <button class="apt-tab" id="aptab0" onclick="setApt(0)">Entrambi</button>
       </div>
       <div class="card" style="padding:0.75rem;"><div class="cal-grid" id="cal-grid"></div></div>
     </div>
@@ -255,8 +258,8 @@ select.form-input { cursor: pointer; }
         <div style="display:flex;gap:8px;">
           <select class="filter-select" id="filter-apt" onchange="renderBookings()">
             <option value="all">Tutti gli apt.</option>
-            <option value="1">Cima Rosa</option>
-            <option value="2">Lago Blu</option>
+            <option value="1">Olbe</option>
+            <option value="2">Poch</option>
           </select>
           <select class="filter-select" id="filter-src" onchange="renderBookings()">
             <option value="all">Tutte le fonti</option>
@@ -273,8 +276,8 @@ select.form-input { cursor: pointer; }
     <!-- PREZZI -->
     <div id="tab-prezzi" class="section">
       <div class="grid2">
-        <div class="card"><div class="card-title">Cima Rosa <span class="badge badge-apt1">Apt 1</span></div><div id="prices-apt1"></div></div>
-        <div class="card"><div class="card-title">Lago Blu <span class="badge badge-apt2">Apt 2</span></div><div id="prices-apt2"></div></div>
+        <div class="card"><div class="card-title">Olbe <span class="badge badge-apt1">Apt 1</span></div><div id="prices-apt1"></div></div>
+        <div class="card"><div class="card-title">Poch <span class="badge badge-apt2">Apt 2</span></div><div id="prices-apt2"></div></div>
       </div>
       <div class="card">
         <div class="card-title">Tariffe extra</div>
@@ -291,17 +294,17 @@ select.form-input { cursor: pointer; }
         <div class="ical-box">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><div class="cal-legend-dot" style="background:var(--airbnb-dot);width:12px;height:12px;"></div><strong style="font-size:14px;">Airbnb</strong></div>
           <div class="ical-step">Annuncio → Disponibilità → Collega calendari → Esporta calendario</div>
-          <div style="margin-top:10px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 1 – Cima Rosa</div>
+          <div style="margin-top:10px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 1 – Olbe</div>
           <input class="ical-input" type="url" placeholder="https://www.airbnb.it/calendar/ical/..." id="ical-airbnb-1">
-          <div style="margin-top:8px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 2 – Lago Blu</div>
+          <div style="margin-top:8px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 2 – Poch</div>
           <input class="ical-input" type="url" placeholder="https://www.airbnb.it/calendar/ical/..." id="ical-airbnb-2">
         </div>
         <div class="ical-box">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><div class="cal-legend-dot" style="background:var(--booking-dot);width:12px;height:12px;"></div><strong style="font-size:14px;">Booking.com</strong></div>
           <div class="ical-step">Extranet → Struttura → Calendario → Sincronizzazione calendari → Esporta</div>
-          <div style="margin-top:10px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 1 – Cima Rosa</div>
+          <div style="margin-top:10px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 1 – Olbe</div>
           <input class="ical-input" type="url" placeholder="https://admin.booking.com/hotel/hoteladmin/ical.ics?..." id="ical-booking-1">
-          <div style="margin-top:8px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 2 – Lago Blu</div>
+          <div style="margin-top:8px;font-size:12px;color:var(--text-sec);font-weight:500;">Apt 2 – Poch</div>
           <input class="ical-input" type="url" placeholder="https://admin.booking.com/hotel/hoteladmin/ical.ics?..." id="ical-booking-2">
         </div>
       </div>
@@ -313,8 +316,8 @@ select.form-input { cursor: pointer; }
         <div class="card-title">Esporta il tuo calendario (.ics)</div>
         <p style="font-size:13px;color:var(--text-sec);margin-bottom:1rem;">Scarica le prenotazioni come file iCal da importare in Google Calendar, Apple Calendar o altre piattaforme.</p>
         <div style="display:flex;gap:8px;flex-wrap:wrap;">
-          <button class="btn btn-sm" onclick="exportIcal(1)">Esporta Apt 1 (Cima Rosa)</button>
-          <button class="btn btn-sm" onclick="exportIcal(2)">Esporta Apt 2 (Lago Blu)</button>
+          <button class="btn btn-sm" onclick="exportIcal(1)">Esporta Apt 1 (Olbe)</button>
+          <button class="btn btn-sm" onclick="exportIcal(2)">Esporta Apt 2 (Poch)</button>
           <button class="btn btn-sm" onclick="exportIcal(0)">Esporta tutto</button>
         </div>
       </div>
@@ -325,9 +328,9 @@ select.form-input { cursor: pointer; }
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
-    <div class="modal-title">Nuova prenotazione</div>
+    <div class="modal-title" id="modal-title">Nuova prenotazione</div>
     <div class="form-row"><label class="form-label">Appartamento</label>
-      <select class="form-input" id="m-apt"><option value="1">Cima Rosa (Apt 1)</option><option value="2">Lago Blu (Apt 2)</option></select></div>
+      <select class="form-input" id="m-apt"><option value="1">Olbe (Apt 1)</option><option value="2">Poch (Apt 2)</option></select></div>
     <div class="form-row"><label class="form-label">Nome ospite *</label><input class="form-input" id="m-guest" placeholder="Nome e cognome"></div>
     <div class="form-row-2">
       <div><label class="form-label">Check-in *</label><input class="form-input" id="m-checkin" type="date"></div>
@@ -377,8 +380,10 @@ let unsubBookings = null;
 
 const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const dayNames = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+const aptNames = { 1: 'Olbe', 2: 'Poch' };
 let calYear = new Date().getFullYear(), calMonth = new Date().getMonth();
 let currentApt = 1;
+let editingId = null;
 
 // ---- AUTH ----
 window.signInWithGoogle = async () => {
@@ -501,7 +506,7 @@ function renderDashboard() {
   document.getElementById('bar-chart').innerHTML=months.map((_,i)=>{
     const r1=bookings.filter(b=>b.apt===1&&new Date(b.checkin).getMonth()===i&&new Date(b.checkin).getFullYear()===cy).reduce((s,b)=>s+Number(b.amount||0),0);
     const r2=bookings.filter(b=>b.apt===2&&new Date(b.checkin).getMonth()===i&&new Date(b.checkin).getFullYear()===cy).reduce((s,b)=>s+Number(b.amount||0),0);
-    return `<div class="bar-group"><div class="bar" style="height:${Math.max(Math.round(r1/maxRev*100),4)}px;background:var(--apt1);" title="Cima Rosa: €${r1}"></div><div class="bar" style="height:${Math.max(Math.round(r2/maxRev*100),4)}px;background:var(--apt2);" title="Lago Blu: €${r2}"></div></div>`;
+    return `<div class="bar-group"><div class="bar" style="height:${Math.max(Math.round(r1/maxRev*100),4)}px;background:var(--apt1);" title="Olbe: €${r1}"></div><div class="bar" style="height:${Math.max(Math.round(r2/maxRev*100),4)}px;background:var(--apt2);" title="Poch: €${r2}"></div></div>`;
   }).join('');
   document.getElementById('bar-labels').innerHTML=months.map(m=>`<div class="bar-label">${m}</div>`).join('');
 
@@ -509,7 +514,7 @@ function renderDashboard() {
   document.getElementById('upcoming-list').innerHTML=upcoming.length?upcoming.map(b=>`
     <div class="booking-row">
       <span class="badge badge-${b.source}">${b.source}</span>
-      <span class="badge badge-apt${b.apt}">Apt ${b.apt}</span>
+      <span class="badge badge-apt${b.apt}">${aptNames[b.apt]||'Apt '+b.apt}</span>
       <span class="booking-guest">${b.guest}</span>
       <span class="booking-dates">${fmtDate(b.checkin)} → ${fmtDate(b.checkout)}</span>
       <span class="booking-amount">€${Number(b.amount||0).toLocaleString('it')}</span>
@@ -528,7 +533,13 @@ function renderDashboard() {
 }
 
 // ---- CALENDAR ----
-window.setApt=function(n){currentApt=n;document.getElementById('aptab1').className='apt-tab'+(n===1?' active-apt1':'');document.getElementById('aptab2').className='apt-tab'+(n===2?' active-apt2':'');renderCalendar();};
+window.setApt=function(n){
+  currentApt=n;
+  document.getElementById('aptab1').className='apt-tab'+(n===1?' active-apt1':'');
+  document.getElementById('aptab2').className='apt-tab'+(n===2?' active-apt2':'');
+  document.getElementById('aptab0').className='apt-tab'+(n===0?' active-apt1':'');
+  renderCalendar();
+};
 window.prevMonth=function(){calMonth--;if(calMonth<0){calMonth=11;calYear--;}renderCalendar();};
 window.nextMonth=function(){calMonth++;if(calMonth>11){calMonth=0;calYear++;}renderCalendar();};
 
@@ -544,8 +555,12 @@ function renderCalendar(){
   for(let d=1;d<=daysInMonth;d++){
     const ds=calYear+'-'+String(calMonth+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
     const isToday=new Date(ds).toDateString()===today.toDateString();
-    const dayBooks=bookings.filter(b=>b.apt===currentApt&&ds>=b.checkin&&ds<b.checkout);
-    const bHtml=dayBooks.map(b=>`<div class="cal-booking ${b.source}">${b.guest.split(' ')[0]}</div>`).join('');
+    const aptFilter = currentApt===0 ? [1,2] : [currentApt];
+    const dayBooks=bookings.filter(b=>aptFilter.includes(b.apt)&&ds>=b.checkin&&ds<b.checkout);
+    const bHtml=dayBooks.map(b=>{
+      const aptDot = currentApt===0 ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${b.apt===1?'var(--apt1)':'var(--apt2)'};margin-right:3px;vertical-align:middle;"></span>` : '';
+      return `<div class="cal-booking ${b.source}">${aptDot}${b.guest.split(' ')[0]}</div>`;
+    }).join('');
     html+=`<div class="cal-day${isToday?' today':''}${dayBooks.length?' occupied':''}"><div class="cal-day-num">${d}</div>${bHtml}</div>`;
   }
   const total=startDow+daysInMonth;const rem=total%7===0?0:7-(total%7);
@@ -565,26 +580,48 @@ function renderBookings(){
   el.innerHTML=filtered.length?filtered.map(b=>`
     <div class="booking-row">
       <span class="badge badge-${b.source}">${srcLabel[b.source]||b.source}</span>
-      <span class="badge badge-apt${b.apt}">Apt ${b.apt}</span>
+      <span class="badge badge-apt${b.apt}">${aptNames[b.apt]||'Apt '+b.apt}</span>
       <span class="booking-guest">${b.guest}</span>
       <span class="booking-dates">${fmtDateFull(b.checkin)} → ${fmtDateFull(b.checkout)}</span>
       <span class="booking-amount">€${Number(b.amount||0).toLocaleString('it')}</span>
       ${b.notes?`<span style="font-size:11px;color:var(--text-ter);">${b.notes}</span>`:''}
+      <button class="btn btn-sm" onclick="editBooking('${b.id}')">✎ Modifica</button>
       <button class="btn btn-sm btn-danger" onclick="deleteBooking('${b.id}')">✕</button>
     </div>`).join(''):'<div class="empty">Nessuna prenotazione trovata</div>';
 }
 
 // ---- MODAL ----
 window.openModal=function(){
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Nuova prenotazione';
   document.getElementById('m-checkin').value=new Date().toISOString().split('T')[0];
   document.getElementById('m-checkout').value='';
   document.getElementById('m-guest').value='';
   document.getElementById('m-amount').value='';
   document.getElementById('m-notes').value='';
   document.getElementById('m-guests-num').value='';
+  document.getElementById('m-apt').value='1';
+  document.getElementById('m-source').value='manual';
   document.getElementById('modal-overlay').classList.add('open');
 };
-window.closeModal=function(){ document.getElementById('modal-overlay').classList.remove('open'); };
+
+window.editBooking=function(id){
+  const b = bookings.find(b=>b.id===id);
+  if(!b) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'Modifica prenotazione';
+  document.getElementById('m-apt').value = b.apt;
+  document.getElementById('m-guest').value = b.guest;
+  document.getElementById('m-checkin').value = b.checkin;
+  document.getElementById('m-checkout').value = b.checkout;
+  document.getElementById('m-amount').value = b.amount||'';
+  document.getElementById('m-source').value = b.source||'manual';
+  document.getElementById('m-guests-num').value = b.guestsNum||'';
+  document.getElementById('m-notes').value = b.notes||'';
+  document.getElementById('modal-overlay').classList.add('open');
+};
+
+window.closeModal=function(){ document.getElementById('modal-overlay').classList.remove('open'); editingId=null; };
 
 window.saveBooking=async function(){
   const guest=document.getElementById('m-guest').value.trim();
@@ -594,18 +631,23 @@ window.saveBooking=async function(){
   if(!guest){alert('Inserisci il nome dell\'ospite.');return;}
   if(!checkin||!checkout){alert('Inserisci le date.');return;}
   if(new Date(checkout)<=new Date(checkin)){alert('Il check-out deve essere dopo il check-in.');return;}
+  const data = {
+    apt:parseInt(document.getElementById('m-apt').value),
+    guest, checkin, checkout, amount,
+    source:document.getElementById('m-source').value,
+    notes:document.getElementById('m-notes').value,
+    guestsNum:parseInt(document.getElementById('m-guests-num').value)||0,
+  };
   showSaving(true);
   try {
-    await addDoc(bookingsCol(),{
-      apt:parseInt(document.getElementById('m-apt').value),
-      guest, checkin, checkout, amount,
-      source:document.getElementById('m-source').value,
-      notes:document.getElementById('m-notes').value,
-      guestsNum:parseInt(document.getElementById('m-guests-num').value)||0,
-      createdAt: new Date().toISOString()
-    });
+    if(editingId) {
+      await setDoc(doc(db,'users',currentUser.uid,'bookings',editingId), {...data, updatedAt: new Date().toISOString()}, {merge:true});
+      toast('Prenotazione aggiornata!');
+    } else {
+      await addDoc(bookingsCol(), {...data, createdAt: new Date().toISOString()});
+      toast('Prenotazione salvata!');
+    }
     closeModal();
-    toast('Prenotazione salvata!');
   } catch(e){ toast('Errore: '+e.message); }
   showSaving(false);
 };
@@ -669,7 +711,7 @@ window.saveIcalLinks=async function(){
 
 window.exportIcal=function(apt){
   const toExport=apt===0?bookings:bookings.filter(b=>b.apt===apt);
-  const aptName=apt===0?'tutti':apt===1?'cima-rosa':'lago-blu';
+  const aptName=apt===0?'tutti':apt===1?'olbe':'poch';
   let ics='BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//Gestione Appartamenti Montagna//IT\r\nCALSCALE:GREGORIAN\r\n';
   toExport.forEach(b=>{
     const now=new Date().toISOString().replace(/[-:]/g,'').split('.')[0]+'Z';
