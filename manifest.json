@@ -1,8 +1,7 @@
 {
   "name": "Gestione Appartamenti",
   "short_name": "Appartamenti",
-  "start_url": "/",
-  "scope": "/veslar/",
+  "start_url": "https://apt-veslar.github.io/veslar/",
   "display": "standalone",
   "background_color": "#1a1a18",
   "theme_color": "#1a1a18",
