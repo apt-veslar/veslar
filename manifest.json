@@ -2,6 +2,7 @@
   "name": "Gestione Appartamenti",
   "short_name": "Appartamenti",
   "start_url": "/",
+  "scope": "/veslar/",
   "display": "standalone",
   "background_color": "#1a1a18",
   "theme_color": "#1a1a18",
