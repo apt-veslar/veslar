@@ -25,18 +25,18 @@
   --booking-bg: #E6F1FB; --booking-text: #0C447C; --booking-dot: #378ADD;
   --manual-bg: #EAF3DE; --manual-text: #3B6D11; --manual-dot: #639922;
 }
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #1c1c1a; --bg-sec: #252523; --bg-ter: #2e2e2c;
-    --text: #f0efea; --text-sec: #a0a09a; --text-ter: #6a6a64;
-    --border: rgba(255,255,255,0.1); --border-sec: rgba(255,255,255,0.2);
-    --apt1-bg: #085041; --apt1-text: #9FE1CB;
-    --apt2-bg: #0C447C; --apt2-text: #B5D4F4;
-    --airbnb-bg: #501313; --airbnb-text: #F7C1C1;
-    --booking-bg: #042C53; --booking-text: #B5D4F4;
-    --manual-bg: #173404; --manual-text: #C0DD97;
-  }
+html.dark {
+  --bg: #1c1c1a; --bg-sec: #252523; --bg-ter: #2e2e2c;
+  --text: #f0efea; --text-sec: #a0a09a; --text-ter: #6a6a64;
+  --border: rgba(255,255,255,0.1); --border-sec: rgba(255,255,255,0.2);
+  --apt1-bg: #085041; --apt1-text: #9FE1CB;
+  --apt2-bg: #0C447C; --apt2-text: #B5D4F4;
+  --airbnb-bg: #501313; --airbnb-text: #F7C1C1;
+  --booking-bg: #042C53; --booking-text: #B5D4F4;
+  --manual-bg: #173404; --manual-text: #C0DD97;
 }
+.theme-toggle { background: none; border: 0.5px solid var(--border-sec); border-radius: 20px; padding: 4px 10px; cursor: pointer; font-size: 16px; line-height: 1; color: var(--text); transition: background 0.15s; }
+.theme-toggle:hover { background: var(--bg-sec); }
 body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--bg-ter); color: var(--text); font-size: 15px; min-height: 100vh; }
 
 /* LOGIN SCREEN */
@@ -197,6 +197,7 @@ select.form-input { cursor: pointer; }
       </div>
     </div>
     <div class="user-area">
+      <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Cambia tema">☀️</button>
       <div id="user-avatar-wrap"></div>
       <span class="user-name" id="user-name-label"></span>
       <button class="btn btn-sm btn-logout" onclick="signOut()">Esci</button>
@@ -427,6 +428,11 @@ onAuthStateChanged(auth, async (user) => {
     subscribeBookings();
     renderDashboard();
     renderPrices();
+    // Sync theme button icon with saved preference
+    try {
+      const saved = localStorage.getItem('apt_theme');
+      document.getElementById('theme-btn').textContent = saved === 'dark' ? '🌙' : '☀️';
+    } catch(e){}
   } else {
     currentUser = null;
     document.getElementById('login-screen').style.display = 'flex';
@@ -576,8 +582,24 @@ function renderCalendar(){
   document.getElementById('cal-grid').innerHTML=html;
 }
 
+// ---- THEME ----
+window.toggleTheme = function(){
+  const isDark = document.documentElement.classList.toggle('dark');
+  document.getElementById('theme-btn').textContent = isDark ? '🌙' : '☀️';
+  try { localStorage.setItem('apt_theme', isDark ? 'dark' : 'light'); } catch(e){}
+};
+// Apply saved theme on load (default: light)
+(function(){
+  try {
+    if(localStorage.getItem('apt_theme') === 'dark'){
+      document.documentElement.classList.add('dark');
+      // btn not yet in DOM, will be set after login
+    }
+  } catch(e){}
+})();
+
 // ---- BOOKINGS LIST ----
-function renderBookings(){
+window.renderBookings = function(){
   const aptF=document.getElementById('filter-apt')?.value||'all';
   const srcF=document.getElementById('filter-src')?.value||'all';
   let filtered=bookings.filter(b=>(aptF==='all'||b.apt===parseInt(aptF))&&(srcF==='all'||b.source===srcF));
