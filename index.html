@@ -62,7 +62,14 @@
       <div class="grid4" id="metrics"><div class="loading">Caricamento...</div></div>
       <div class="grid2">
         <div class="card">
-          <div class="card-title">Ricavi mensili 2026</div>
+          <div class="card-title" style="justify-content:space-between;">
+            <span>Ricavi mensili <span id="dash-year-label" style="color:var(--text-sec);font-weight:400;font-size:13px;"></span></span>
+            <div style="display:flex;align-items:center;gap:6px;">
+              <button class="btn btn-sm" style="padding:3px 8px;font-size:14px;" onclick="dashYearStep(-1)">‹</button>
+              <select class="filter-select" id="dash-year-select" onchange="setDashYear(parseInt(this.value))" style="font-size:13px;padding:3px 8px;font-weight:600;"></select>
+              <button class="btn btn-sm" style="padding:3px 8px;font-size:14px;" onclick="dashYearStep(1)">›</button>
+            </div>
+          </div>
           <div class="legend-row">
             <div class="legend-item"><div class="legend-dot" style="background:var(--apt1);"></div>Olbe</div>
             <div class="legend-item"><div class="legend-dot" style="background:var(--apt2);"></div>Poch</div>
@@ -76,8 +83,8 @@
         </div>
       </div>
       <div class="grid2">
-        <div class="card"><div class="card-title">Apt. Olbe <span class="badge badge-apt1">Apt 1</span></div><div id="apt1-stats"></div></div>
-        <div class="card"><div class="card-title">Apt. Poch <span class="badge badge-apt2">Apt 2</span></div><div id="apt2-stats"></div></div>
+        <div class="card"><div class="card-title">Apt. Olbe <span class="badge badge-apt1">Apt 1</span> <span id="apt1-year-label" style="font-size:11px;color:var(--text-ter);font-weight:400;"></span></div><div id="apt1-stats"></div></div>
+        <div class="card"><div class="card-title">Apt. Poch <span class="badge badge-apt2">Apt 2</span> <span id="apt2-year-label" style="font-size:11px;color:var(--text-ter);font-weight:400;"></span></div><div id="apt2-stats"></div></div>
       </div>
     </div>
 
@@ -85,9 +92,8 @@
     <div id="tab-calendario" class="section">
       <div class="cal-header">
         <div class="cal-nav">
-          <button class="btn btn-sm" onclick="prevMonth()">&#8592;</button>
-          <div class="cal-month" id="cal-month-label"></div>
-          <button class="btn btn-sm" onclick="nextMonth()">&#8594;</button>
+          <select class="filter-select" id="cal-month-select" onchange="setCalMonth(this.value)" style="font-weight:600;font-size:14px;"></select>
+          <select class="filter-select" id="cal-year-select" onchange="setCalYear(this.value)" style="font-weight:600;font-size:14px;width:80px;"></select>
         </div>
         <div class="cal-legend">
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--airbnb-dot);"></div>Airbnb</div>
@@ -109,19 +115,23 @@
     <div id="tab-prenotazioni" class="section">
       <div class="filter-bar">
         <div style="display:flex;gap:8px;">
-          <select class="filter-select" id="filter-apt" onchange="renderBookings()">
+          <select class="filter-select" id="filter-apt" onchange="bookingsPage=1;renderBookings()">
             <option value="all">Tutti gli apt.</option>
             <option value="1">Olbe</option>
             <option value="2">Poch</option>
           </select>
-          <select class="filter-select" id="filter-src" onchange="renderBookings()">
+          <select class="filter-select" id="filter-src" onchange="bookingsPage=1;renderBookings()">
             <option value="all">Tutte le fonti</option>
             <option value="airbnb">Airbnb</option>
             <option value="booking">Booking</option>
             <option value="manual">Manuale</option>
           </select>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="openModal()">+ Aggiungi</button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="triggerImport()">⬆ Importa CSV</button>
+          <input type="file" id="import-file-input" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleImportFile(this)">
+          <button class="btn btn-primary btn-sm" onclick="openModal()">+ Aggiungi</button>
+        </div>
       </div>
       <div class="card"><div id="bookings-list"><div class="loading">Caricamento...</div></div></div>
     </div>
@@ -174,6 +184,57 @@
           <button class="btn btn-sm" onclick="exportIcal(0)">Esporta tutto</button>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-overlay" id="import-overlay" onclick="if(event.target===this)closeImport()">
+  <div class="modal" style="width:660px;max-width:100%;">
+    <div class="modal-title">Importa prenotazioni da CSV</div>
+    <div id="import-step-parse" style="display:none;">
+      <div id="import-parse-msg" style="font-size:13px;color:var(--text-sec);margin-bottom:1rem;"></div>
+      <div style="max-height:320px;overflow-y:auto;border:0.5px solid var(--border);border-radius:var(--radius);">
+        <table id="import-preview-table" style="width:100%;border-collapse:collapse;font-size:12px;">
+          <thead id="import-thead" style="position:sticky;top:0;background:var(--bg-sec);"></thead>
+          <tbody id="import-tbody"></tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;font-size:12px;color:var(--text-sec);" id="import-skip-msg"></div>
+      <div class="form-actions">
+        <button class="btn btn-sm" onclick="closeImport()">Annulla</button>
+        <button class="btn btn-primary btn-sm" id="import-confirm-btn" onclick="confirmImport()">Importa tutte</button>
+      </div>
+    </div>
+    <div id="import-step-done" style="display:none;text-align:center;padding:1.5rem 0;">
+      <div style="font-size:32px;margin-bottom:10px;">✅</div>
+      <div style="font-size:15px;font-weight:600;" id="import-done-msg"></div>
+      <div class="form-actions" style="justify-content:center;margin-top:1rem;">
+        <button class="btn btn-primary btn-sm" onclick="closeImport()">Chiudi</button>
+      </div>
+    </div>
+    <div id="import-step-loading" style="display:none;text-align:center;padding:2rem 0;">
+      <div style="font-size:13px;color:var(--text-sec);">Importazione in corso...</div>
+    </div>
+  </div>
+</div>
+
+<!-- BOOKING DETAIL POPUP -->
+<div class="cal-popup-overlay" id="cal-popup-overlay" onclick="if(event.target===this)closeCalPopup()">
+  <div class="cal-popup">
+    <div class="cal-popup-header">
+      <div class="cal-popup-title" id="cal-popup-guest">—</div>
+      <button class="cal-popup-close" onclick="closeCalPopup()">✕</button>
+    </div>
+    <div id="cal-popup-badges" style="display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap;"></div>
+    <div class="cal-popup-row"><span class="cal-popup-label">Check-in</span><span class="cal-popup-value" id="cal-popup-checkin">—</span></div>
+    <div class="cal-popup-row"><span class="cal-popup-label">Check-out</span><span class="cal-popup-value" id="cal-popup-checkout">—</span></div>
+    <div class="cal-popup-row"><span class="cal-popup-label">Notti</span><span class="cal-popup-value" id="cal-popup-nights">—</span></div>
+    <div class="cal-popup-row"><span class="cal-popup-label">Importo</span><span class="cal-popup-value" id="cal-popup-amount">—</span></div>
+    <div class="cal-popup-row" id="cal-popup-guests-row"><span class="cal-popup-label">Ospiti</span><span class="cal-popup-value" id="cal-popup-guests">—</span></div>
+    <div class="cal-popup-row" id="cal-popup-notes-row"><span class="cal-popup-label">Note</span><span class="cal-popup-value" id="cal-popup-notes">—</span></div>
+    <div class="cal-popup-actions">
+      <button class="btn btn-sm" onclick="editFromCalPopup()">✎ Modifica</button>
     </div>
   </div>
 </div>
