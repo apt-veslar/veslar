@@ -133,6 +133,7 @@ window.showTab = function(t, btn) {
   if(t==='prenotazioni') renderBookings();
   if(t==='prezzi') renderPrices();
   if(t==='sync') loadIcalInputs();
+  if(t==='backup') showLastBackupStatus();
 };
 
 // ---- DASHBOARD ----
@@ -494,6 +495,35 @@ window.exportIcal=function(apt){
   a.download=`prenotazioni-apt-${aptName}.ics`;
   a.click();
   toast('File .ics scaricato!');
+};
+
+// ---- BACKUP ----
+function showLastBackupStatus(){
+  const el = document.getElementById('backup-status');
+  if(!el) return;
+  try {
+    const last = localStorage.getItem('apt_last_backup');
+    el.textContent = last ? 'Ultimo backup: '+new Date(last).toLocaleString('it') : '';
+  } catch(e){}
+}
+
+window.exportBackup = function(){
+  const data = {
+    type: 'apt-veslar-backup',
+    version: 1,
+    exportedAt: new Date().toISOString(),
+    bookings,
+    settings: { prices, extras, ical },
+  };
+  const json = JSON.stringify(data, null, 2);
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([json], {type:'application/json'}));
+  const stamp = new Date().toISOString().split('T')[0];
+  a.download = `backup-appartamenti-${stamp}.json`;
+  a.click();
+  try { localStorage.setItem('apt_last_backup', new Date().toISOString()); } catch(e){}
+  showLastBackupStatus();
+  toast('Backup scaricato!');
 };
 
 // ---- IMPORT ----

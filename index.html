@@ -55,6 +55,7 @@
       <button class="tab" onclick="showTab('prenotazioni',this)">Prenotazioni</button>
       <button class="tab" onclick="showTab('prezzi',this)">Prezzi</button>
       <button class="tab" onclick="showTab('sync',this)">Sincronizzazione</button>
+      <button class="tab" onclick="showTab('backup',this)">Backup</button>
     </div>
 
     <!-- DASHBOARD -->
@@ -182,6 +183,19 @@
           <button class="btn btn-sm" onclick="exportIcal(1)">Esporta Apt 1 (Olbe)</button>
           <button class="btn btn-sm" onclick="exportIcal(2)">Esporta Apt 2 (Poch)</button>
           <button class="btn btn-sm" onclick="exportIcal(0)">Esporta tutto</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- BACKUP -->
+    <div id="tab-backup" class="section">
+      <div class="info-box">ℹ️ Scarica una copia di tutte le tue prenotazioni e impostazioni (tariffe, extra, link iCal) in un unico file. Conserva il file in un posto sicuro: potrai usarlo per ripristinare i dati in futuro.</div>
+      <div class="card">
+        <div class="card-title">Esporta backup completo</div>
+        <p style="font-size:13px;color:var(--text-sec);margin-bottom:1rem;">Include tutte le prenotazioni di entrambi gli appartamenti, le tariffe e i link di sincronizzazione iCal.</p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <button class="btn btn-primary" onclick="exportBackup()">⬇ Scarica backup (.json)</button>
+          <span id="backup-status" style="font-size:12px;color:var(--text-sec);"></span>
         </div>
       </div>
     </div>
