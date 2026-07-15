@@ -12,10 +12,7 @@ No build step. Open `index.html` directly in a browser. Firebase SDK loads from 
 
 ## Deployment
 
-Two parallel GitHub Actions workflows trigger on push to `main`:
-
-- `.github/workflows/static.yml` — deploys to GitHub Pages
-- `.github/workflows/deploy.yml` — deploys via FTP to www.veslar.it (Aruba hosting)
+No custom GitHub Actions workflows. GitHub Pages deploys automatically from `main` via the repo's built-in Pages deployment (Settings → Pages), independent of any workflow file.
 
 There are no tests, no linting tools, and no package manager.
 
@@ -41,6 +38,7 @@ The application is split across three files:
 - Prenotazioni — bookings list with filters (apartment, source); add/edit/delete
 - Prezzi — per-apartment nightly rate, cleaning fee, deposit
 - Sincronizzazione — iCal feed URLs input + calendar export
+- Backup — export all bookings and settings as a downloadable JSON file
 
 **Theme** preference is persisted in `localStorage`.
 
