@@ -21,7 +21,11 @@ There are no tests, no linting tools, and no package manager.
 
 ## Architecture
 
-The entire application lives in a single file: **`index.html`** (~760 lines). It contains embedded CSS, the full HTML structure, and all JavaScript as an ES6 module (`<script type="module">`). There are no separate JS/CSS files.
+The application is split across three files:
+
+- **`index.html`** — HTML structure only (login screen, app shell, tab panels, booking modal)
+- **`styles.css`** — all CSS custom properties, light/dark theme, and component styles
+- **`app.js`** — ES6 module; Firebase init, auth, Firestore listeners, and all render functions
 
 **Backend: Firebase (Auth + Firestore)**
 
