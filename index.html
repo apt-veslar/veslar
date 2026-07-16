@@ -257,8 +257,8 @@
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-title" id="modal-title">Nuova prenotazione</div>
-    <div class="form-row"><label class="form-label">Appartamento</label>
-      <select class="form-input" id="m-apt"><option value="1">Olbe (Apt 1)</option><option value="2">Poch (Apt 2)</option></select></div>
+    <div class="form-row"><label class="form-label">Appartamento *</label>
+      <select class="form-input" id="m-apt" required><option value="">Seleziona...</option><option value="1">Olbe (Apt 1)</option><option value="2">Poch (Apt 2)</option></select></div>
     <div class="form-row"><label class="form-label">Nome ospite *</label><input class="form-input" id="m-guest" placeholder="Nome e cognome"></div>
     <div class="form-row-2">
       <div><label class="form-label">Check-in *</label><input class="form-input" id="m-checkin" type="date"></div>
@@ -270,7 +270,7 @@
         <select class="form-input" id="m-source"><option value="manual">Manuale</option><option value="airbnb">Airbnb</option><option value="booking">Booking</option></select></div>
     </div>
     <div class="form-row"><label class="form-label">Numero ospiti</label><input class="form-input" id="m-guests-num" type="number" placeholder="2" min="1"></div>
-    <div class="form-row"><label class="form-label">Note</label><input class="form-input" id="m-notes" placeholder="Richieste speciali, animali, ecc."></div>
+    <div class="form-row"><label class="form-label">Note</label><textarea class="form-input" id="m-notes" placeholder="Richieste speciali, animali, ecc." rows="4" style="resize:vertical;"></textarea></div>
     <div class="form-actions">
       <button class="btn btn-sm" onclick="closeModal()">Annulla</button>
       <button class="btn btn-primary btn-sm" onclick="saveBooking()">Salva prenotazione</button>

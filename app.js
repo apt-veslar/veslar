@@ -372,7 +372,7 @@ window.openModal=function(){
   document.getElementById('m-amount').value='';
   document.getElementById('m-notes').value='';
   document.getElementById('m-guests-num').value='';
-  document.getElementById('m-apt').value='1';
+  document.getElementById('m-apt').value='';
   document.getElementById('m-source').value='manual';
   document.getElementById('modal-overlay').classList.add('open');
 };
@@ -396,15 +396,17 @@ window.editBooking=function(id){
 window.closeModal=function(){ document.getElementById('modal-overlay').classList.remove('open'); editingId=null; };
 
 window.saveBooking=async function(){
+  const aptVal=document.getElementById('m-apt').value;
   const guest=document.getElementById('m-guest').value.trim();
   const checkin=document.getElementById('m-checkin').value;
   const checkout=document.getElementById('m-checkout').value;
   const amount=parseFloat(document.getElementById('m-amount').value)||0;
+  if(!aptVal){alert('Seleziona l\'appartamento.');return;}
   if(!guest){alert('Inserisci il nome dell\'ospite.');return;}
   if(!checkin||!checkout){alert('Inserisci le date.');return;}
   if(new Date(checkout)<=new Date(checkin)){alert('Il check-out deve essere dopo il check-in.');return;}
   const data = {
-    apt:parseInt(document.getElementById('m-apt').value),
+    apt:parseInt(aptVal),
     guest, checkin, checkout, amount,
     source:document.getElementById('m-source').value,
     notes:document.getElementById('m-notes').value,
