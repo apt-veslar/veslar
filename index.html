@@ -53,6 +53,7 @@
       <button class="tab active" onclick="showTab('dashboard',this)">Dashboard</button>
       <button class="tab" onclick="showTab('calendario',this)">Calendario</button>
       <button class="tab" onclick="showTab('prenotazioni',this)">Prenotazioni</button>
+      <button class="tab" onclick="showTab('clienti',this)">Clienti</button>
       <button class="tab" onclick="showTab('prezzi',this)">Prezzi</button>
       <button class="tab" onclick="showTab('sync',this)">Sincronizzazione</button>
       <button class="tab" onclick="showTab('backup',this)">Backup</button>
@@ -135,6 +136,14 @@
         </div>
       </div>
       <div class="card"><div id="bookings-list"><div class="loading">Caricamento...</div></div></div>
+    </div>
+
+    <!-- CLIENTI -->
+    <div id="tab-clienti" class="section">
+      <div class="filter-bar">
+        <input class="form-input" id="customer-search" placeholder="Cerca cliente..." oninput="renderCustomers()" style="max-width:260px;">
+      </div>
+      <div class="card"><div id="customers-list"><div class="loading">Caricamento...</div></div></div>
     </div>
 
     <!-- PREZZI -->
@@ -253,13 +262,25 @@
   </div>
 </div>
 
+<!-- CUSTOMER DETAIL POPUP -->
+<div class="cal-popup-overlay" id="customer-popup-overlay" onclick="if(event.target===this)closeCustomerPopup()">
+  <div class="cal-popup" style="width:420px;">
+    <div class="cal-popup-header">
+      <div class="cal-popup-title" id="customer-popup-name">—</div>
+      <button class="cal-popup-close" onclick="closeCustomerPopup()">✕</button>
+    </div>
+    <div id="customer-popup-stats" style="display:flex;gap:16px;margin-bottom:12px;font-size:13px;color:var(--text-sec);"></div>
+    <div id="customer-popup-bookings" style="max-height:320px;overflow-y:auto;"></div>
+  </div>
+</div>
+
 <!-- MODAL -->
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
     <div class="modal-title" id="modal-title">Nuova prenotazione</div>
     <div class="form-row"><label class="form-label">Appartamento *</label>
       <select class="form-input" id="m-apt" required><option value="">Seleziona...</option><option value="1">Olbe (Apt 1)</option><option value="2">Poch (Apt 2)</option></select></div>
-    <div class="form-row"><label class="form-label">Nome ospite *</label><input class="form-input" id="m-guest" placeholder="Nome e cognome"></div>
+    <div class="form-row"><label class="form-label">Nome ospite *</label><input class="form-input" id="m-guest" list="customer-names-list" placeholder="Nome e cognome" autocomplete="off"></div>
     <div class="form-row-2">
       <div><label class="form-label">Check-in *</label><input class="form-input" id="m-checkin" type="date"></div>
       <div><label class="form-label">Check-out *</label><input class="form-input" id="m-checkout" type="date"></div>
@@ -277,6 +298,8 @@
     </div>
   </div>
 </div>
+
+<datalist id="customer-names-list"></datalist>
 
 <div class="toast" id="toast"></div>
 

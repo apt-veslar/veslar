@@ -21,6 +21,11 @@ let prices = { 1:{base:120,weekend:160,high:200,low:90}, 2:{base:100,weekend:140
 let extras = { cleaning:60, deposit:200 };
 let ical = { 'airbnb-1':'','airbnb-2':'','booking-1':'','booking-2':'' };
 let unsubBookings = null;
+let customers = [];
+let unsubCustomers = null;
+let customersLoaded = false;
+let bookingsLoadedOnce = false;
+let backfillRan = false;
 
 const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const dayNames = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
@@ -44,6 +49,7 @@ window.signInWithGoogle = async () => {
 
 window.signOut = async () => {
   if(unsubBookings) unsubBookings();
+  if(unsubCustomers) unsubCustomers();
   await fbSignOut(auth);
 };
 
@@ -60,8 +66,12 @@ onAuthStateChanged(auth, async (user) => {
       const initials = (user.displayName||'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
       avatarWrap.innerHTML = `<div class="user-avatar-fallback">${initials}</div>`;
     }
+    customersLoaded = false;
+    bookingsLoadedOnce = false;
+    backfillRan = false;
     await loadSettings();
     subscribeBookings();
+    subscribeCustomers();
     renderDashboard();
     renderPrices();
     // Sync theme button icon with saved preference
@@ -79,6 +89,7 @@ onAuthStateChanged(auth, async (user) => {
 // ---- FIRESTORE PATHS ----
 function userDoc(path) { return doc(db, 'users', currentUser.uid, ...path.split('/')); }
 function bookingsCol() { return collection(db, 'users', currentUser.uid, 'bookings'); }
+function customersCol() { return collection(db, 'users', currentUser.uid, 'customers'); }
 
 // ---- LOAD SETTINGS ----
 async function loadSettings() {
@@ -107,11 +118,121 @@ function subscribeBookings() {
   const q = query(bookingsCol(), orderBy('checkin','desc'));
   unsubBookings = onSnapshot(q, (snap) => {
     bookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    bookingsLoadedOnce = true;
     renderDashboard();
     renderBookings();
+    renderCustomers();
     if(document.getElementById('tab-calendario').classList.contains('active')) renderCalendar();
+    maybeRunCustomerBackfill();
   }, (e) => { console.error('snapshot error', e); });
 }
+
+// ---- CUSTOMERS REALTIME ----
+function subscribeCustomers() {
+  if(unsubCustomers) unsubCustomers();
+  const q = query(customersCol(), orderBy('name'));
+  unsubCustomers = onSnapshot(q, (snap) => {
+    customers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    customersLoaded = true;
+    renderCustomerDatalist();
+    renderCustomers();
+    maybeRunCustomerBackfill();
+  }, (e) => { console.error('customers snapshot error', e); });
+}
+
+function normalizeNameKey(name) {
+  return (name||'').trim().replace(/\s+/g,' ').toLowerCase();
+}
+
+// Finds a customer by (normalized) name, creating one if none exists yet.
+// Pushes newly created customers into the local `customers` array immediately,
+// so back-to-back calls for the same name (e.g. in a loop) don't race the
+// onSnapshot round-trip and create duplicates.
+async function findOrCreateCustomerByName(name) {
+  const trimmed = (name||'').trim();
+  const key = normalizeNameKey(trimmed);
+  if(!key) return null;
+  const existing = customers.find(c => c.nameKey === key);
+  if(existing) return existing.id;
+  const docRef = await addDoc(customersCol(), { name: trimmed, nameKey: key, createdAt: new Date().toISOString() });
+  customers.push({ id: docRef.id, name: trimmed, nameKey: key });
+  return docRef.id;
+}
+
+// One-time, idempotent pass linking legacy bookings (saved before the
+// customers feature existed) to a customer record, matched by guest name.
+// No-ops instantly once every booking has a customerId.
+async function maybeRunCustomerBackfill() {
+  if(backfillRan || !customersLoaded || !bookingsLoadedOnce) return;
+  backfillRan = true;
+  const toLink = bookings.filter(b => !b.customerId && b.guest);
+  if(!toLink.length) return;
+  showSaving(true);
+  let linked = 0;
+  for(const b of toLink) {
+    try {
+      const customerId = await findOrCreateCustomerByName(b.guest);
+      if(customerId) {
+        await setDoc(doc(db,'users',currentUser.uid,'bookings',b.id), { customerId }, { merge: true });
+        linked++;
+      }
+    } catch(e) { console.error('backfill link error', e); }
+  }
+  showSaving(false);
+  if(linked) toast(`Collegati ${linked} ospiti storici ai profili clienti`);
+}
+
+function renderCustomerDatalist(){
+  const el = document.getElementById('customer-names-list');
+  if(!el) return;
+  el.innerHTML = customers.map(c=>`<option value="${c.name}"></option>`).join('');
+}
+
+window.renderCustomers = function(){
+  const el = document.getElementById('customers-list');
+  if(!el) return;
+  const q = (document.getElementById('customer-search')?.value||'').trim().toLowerCase();
+  const now = new Date();
+  const rows = customers
+    .filter(c=>!q || c.name.toLowerCase().includes(q))
+    .map(c=>{
+      const cb = bookings.filter(b=>b.customerId===c.id);
+      const revenue = cb.reduce((s,b)=>s+Number(b.amount||0),0);
+      const future = cb.filter(b=>new Date(b.checkin)>=now).sort((a,b)=>new Date(a.checkin)-new Date(b.checkin));
+      const past = cb.filter(b=>new Date(b.checkin)<now).sort((a,b)=>new Date(b.checkin)-new Date(a.checkin));
+      const highlight = future[0] || past[0];
+      return { c, count: cb.length, revenue, highlight, isFuture: !!future[0] };
+    });
+
+  el.innerHTML = rows.length ? rows.map(x=>`
+    <div class="booking-row" style="cursor:pointer;" onclick="openCustomerPopup('${x.c.id}')">
+      <span class="booking-guest">${x.c.name}</span>
+      <span class="booking-dates">${x.count} prenotazion${x.count!==1?'i':'e'}${x.highlight?` · ${x.isFuture?'prossimo':'ultimo'} soggiorno ${fmtDate(x.highlight.checkin)}`:''}</span>
+      <span class="booking-amount">€${x.revenue.toLocaleString('it')}</span>
+    </div>`).join('') : '<div class="empty">Nessun cliente trovato</div>';
+};
+
+window.openCustomerPopup = function(id){
+  const c = customers.find(x=>x.id===id);
+  if(!c) return;
+  const cb = bookings.filter(b=>b.customerId===id).sort((a,b)=>new Date(b.checkin)-new Date(a.checkin));
+  const revenue = cb.reduce((s,b)=>s+Number(b.amount||0),0);
+  const nights = cb.reduce((s,b)=>s+Math.round((new Date(b.checkout)-new Date(b.checkin))/86400000),0);
+  document.getElementById('customer-popup-name').textContent = c.name;
+  document.getElementById('customer-popup-stats').innerHTML = `
+    <span><strong>${cb.length}</strong> prenotazion${cb.length!==1?'i':'e'}</span>
+    <span><strong>€${revenue.toLocaleString('it')}</strong> ricavi totali</span>
+    <span><strong>${nights}</strong> notti</span>`;
+  document.getElementById('customer-popup-bookings').innerHTML = cb.length ? cb.map(b=>bookingRowHtml(b,{
+    dateFmt:'full', srcLabel:true, showNotes:true, showEdit:true,
+    editHandler:`closeCustomerPopup();editBooking('${b.id}')`,
+  })).join('') : '<div class="empty">Nessuna prenotazione</div>';
+  document.getElementById('customer-popup-overlay').classList.add('open');
+};
+
+window.closeCustomerPopup = function(){
+  document.getElementById('customer-popup-overlay').classList.remove('open');
+};
 
 // ---- HELPERS ----
 function showSaving(v) { document.getElementById('saving-indicator').classList.toggle('show', v); }
@@ -122,6 +243,25 @@ window.toast = function(msg) {
   setTimeout(()=>t.classList.remove('show'),2500);
 };
 
+const srcLabelIt={airbnb:'Airbnb',booking:'Booking',manual:'Manuale'};
+
+function bookingRowHtml(b, opts){
+  opts = opts || {};
+  const dateStr = opts.dateFmt==='full' ? `${fmtDateFull(b.checkin)} → ${fmtDateFull(b.checkout)}` : `${fmtDate(b.checkin)} → ${fmtDate(b.checkout)}`;
+  const label = opts.srcLabel ? (srcLabelIt[b.source]||b.source) : b.source;
+  return `
+    <div class="booking-row">
+      <span class="badge badge-${b.source}">${label}</span>
+      <span class="badge badge-apt${b.apt}">${aptNames[b.apt]||'Apt '+b.apt}</span>
+      <span class="booking-guest">${b.guest}</span>
+      <span class="booking-dates">${dateStr}</span>
+      <span class="booking-amount">€${Number(b.amount||0).toLocaleString('it')}</span>
+      ${opts.showNotes&&b.notes?`<span style="font-size:11px;color:var(--text-ter);">${b.notes}</span>`:''}
+      ${opts.showEdit?`<button class="btn btn-sm" onclick="${opts.editHandler||`editBooking('${b.id}')`}">✎ Modifica</button>`:''}
+      ${opts.showDelete?`<button class="btn btn-sm btn-danger" onclick="deleteBooking('${b.id}')">✕</button>`:''}
+    </div>`;
+}
+
 // ---- TABS ----
 window.showTab = function(t, btn) {
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
@@ -131,6 +271,7 @@ window.showTab = function(t, btn) {
   if(t==='calendario') renderCalendar();
   if(t==='dashboard') renderDashboard();
   if(t==='prenotazioni') renderBookings();
+  if(t==='clienti') renderCustomers();
   if(t==='prezzi') renderPrices();
   if(t==='sync') loadIcalInputs();
   if(t==='backup') showLastBackupStatus();
@@ -179,14 +320,7 @@ function renderDashboard() {
   document.getElementById('bar-labels').innerHTML=months.map(m=>`<div class="bar-label">${m}</div>`).join('');
 
   const upcoming=[...bookings].filter(b=>new Date(b.checkin)>=now).sort((a,b)=>new Date(a.checkin)-new Date(b.checkin)).slice(0,5);
-  document.getElementById('upcoming-list').innerHTML=upcoming.length?upcoming.map(b=>`
-    <div class="booking-row">
-      <span class="badge badge-${b.source}">${b.source}</span>
-      <span class="badge badge-apt${b.apt}">${aptNames[b.apt]||'Apt '+b.apt}</span>
-      <span class="booking-guest">${b.guest}</span>
-      <span class="booking-dates">${fmtDate(b.checkin)} → ${fmtDate(b.checkout)}</span>
-      <span class="booking-amount">€${Number(b.amount||0).toLocaleString('it')}</span>
-    </div>`).join(''):'<div class="empty">Nessuna prenotazione futura</div>';
+  document.getElementById('upcoming-list').innerHTML=upcoming.length?upcoming.map(b=>bookingRowHtml(b)).join(''):'<div class="empty">Nessuna prenotazione futura</div>';
 
   [1,2].forEach(a=>{
     const ab=bookings.filter(b=>b.apt===a&&new Date(b.checkin).getFullYear()===cy);
@@ -323,21 +457,10 @@ window.renderBookings = function(page){
   const start = (bookingsPage-1)*BOOKINGS_PER_PAGE;
   const pageItems = filtered.slice(start, start+BOOKINGS_PER_PAGE);
 
-  const srcLabel={airbnb:'Airbnb',booking:'Booking',manual:'Manuale'};
   const el=document.getElementById('bookings-list');
   if(!el) return;
 
-  let html = pageItems.length ? pageItems.map(b=>`
-    <div class="booking-row">
-      <span class="badge badge-${b.source}">${srcLabel[b.source]||b.source}</span>
-      <span class="badge badge-apt${b.apt}">${aptNames[b.apt]||'Apt '+b.apt}</span>
-      <span class="booking-guest">${b.guest}</span>
-      <span class="booking-dates">${fmtDateFull(b.checkin)} → ${fmtDateFull(b.checkout)}</span>
-      <span class="booking-amount">€${Number(b.amount||0).toLocaleString('it')}</span>
-      ${b.notes?`<span style="font-size:11px;color:var(--text-ter);">${b.notes}</span>`:''}
-      <button class="btn btn-sm" onclick="editBooking('${b.id}')">✎ Modifica</button>
-      <button class="btn btn-sm btn-danger" onclick="deleteBooking('${b.id}')">✕</button>
-    </div>`).join('') : '<div class="empty">Nessuna prenotazione trovata</div>';
+  let html = pageItems.length ? pageItems.map(b=>bookingRowHtml(b,{dateFmt:'full',srcLabel:true,showNotes:true,showEdit:true,showDelete:true})).join('') : '<div class="empty">Nessuna prenotazione trovata</div>';
 
   if(totalPages > 1){
     const p = bookingsPage;
@@ -405,15 +528,16 @@ window.saveBooking=async function(){
   if(!guest){alert('Inserisci il nome dell\'ospite.');return;}
   if(!checkin||!checkout){alert('Inserisci le date.');return;}
   if(new Date(checkout)<=new Date(checkin)){alert('Il check-out deve essere dopo il check-in.');return;}
-  const data = {
-    apt:parseInt(aptVal),
-    guest, checkin, checkout, amount,
-    source:document.getElementById('m-source').value,
-    notes:document.getElementById('m-notes').value,
-    guestsNum:parseInt(document.getElementById('m-guests-num').value)||0,
-  };
   showSaving(true);
   try {
+    const customerId = await findOrCreateCustomerByName(guest);
+    const data = {
+      apt:parseInt(aptVal),
+      guest, checkin, checkout, amount, customerId,
+      source:document.getElementById('m-source').value,
+      notes:document.getElementById('m-notes').value,
+      guestsNum:parseInt(document.getElementById('m-guests-num').value)||0,
+    };
     if(editingId) {
       await setDoc(doc(db,'users',currentUser.uid,'bookings',editingId), {...data, updatedAt: new Date().toISOString()}, {merge:true});
       toast('Prenotazione aggiornata!');
@@ -686,7 +810,8 @@ window.confirmImport = async function(){
   for(const r of importRows){
     try {
       const {_unit, ...data} = r;
-      await addDoc(bookingsCol(), {...data, createdAt: new Date().toISOString()});
+      const customerId = await findOrCreateCustomerByName(data.guest);
+      await addDoc(bookingsCol(), {...data, customerId, createdAt: new Date().toISOString()});
       ok++;
     } catch(e){ fail++; console.error(e); }
   }
