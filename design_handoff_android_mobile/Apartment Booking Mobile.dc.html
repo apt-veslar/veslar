@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<helmet data-dc-atomics>
+<style>
+  body{margin:0;background:#c8c6c0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,system-ui,sans-serif;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  a{color:#185FA5}
+  a:hover{color:#0F6E56}
+  ::-webkit-scrollbar{display:none}
+</style>
+</helmet>
+<x-import component-from-global-scope="AndroidStatusBar" from="./android-frame.jsx" hint-size="0,0"></x-import>
+<x-import component-from-global-scope="AndroidNavBar" from="./android-frame.jsx" hint-size="0,0"></x-import>
+
+<div style="width:412px;height:892px;border-radius:32px;overflow:hidden;background:#0f0f0e;border:8px solid rgba(30,30,28,0.9);box-shadow:0 30px 80px rgba(0,0,0,0.35);display:flex;flex-direction:column;box-sizing:border-box;position:relative">
+  <div style="{{ themeVars }}background:var(--bg-ter);flex:1;display:flex;flex-direction:column;min-height:0">
+
+    <x-import component-from-global-scope="AndroidStatusBar" dark="{{ dark }}" hint-size="100%,40px"></x-import>
+
+    <!-- APP HEADER -->
+    <div style="background:var(--bg);border-bottom:0.5px solid var(--border);padding:10px 16px 12px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0">
+      <div>
+        <div style="font-size:17px;font-weight:700;color:var(--text)">🏔️ Gestione Appartamenti</div>
+        <div style="font-size:11px;color:var(--text-sec);margin-top:2px">Montagna · 2 proprietà<sc-if value="{{ toast.show }}" hint-placeholder-val="{{ false }}"><span style="color:var(--text-ter)"> · salvataggio...</span></sc-if></div>
+      </div>
+      <button style="background:none;border:0.5px solid var(--border-sec);border-radius:20px;padding:4px 10px;cursor:pointer;font-size:16px;line-height:1;color:var(--text);flex-shrink:0" onclick="{{ toggleTheme }}">{{ themeIcon }}</button>
+    </div>
+
+    <!-- CONTENT -->
+    <div style="flex:1;overflow-y:auto;padding:14px 14px 20px;position:relative">
+
+      <!-- DASHBOARD -->
+      <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+          <div style="background:var(--bg-sec);border-radius:8px;padding:12px">
+            <div style="font-size:11px;color:var(--text-sec);margin-bottom:4px">Ricavi {{ metrics.monthLabel }}</div>
+            <div style="font-size:20px;font-weight:700;color:var(--text)">€{{ metrics.revMonth }}</div>
+            <div style="font-size:10px;color:var(--text-ter);margin-top:2px">questo mese</div>
+          </div>
+          <div style="background:var(--bg-sec);border-radius:8px;padding:12px">
+            <div style="font-size:11px;color:var(--text-sec);margin-bottom:4px">Notti prenotate</div>
+            <div style="font-size:20px;font-weight:700;color:var(--text)">{{ metrics.nightsMonth }}</div>
+            <div style="font-size:10px;color:var(--text-ter);margin-top:2px">{{ metrics.monthLabel }}</div>
+          </div>
+          <div style="background:var(--bg-sec);border-radius:8px;padding:12px">
+            <div style="font-size:11px;color:var(--text-sec);margin-bottom:4px">Tasso occupazione</div>
+            <div style="font-size:20px;font-weight:700;color:var(--text)">{{ metrics.occRate }}%</div>
+            <div style="font-size:10px;color:var(--text-ter);margin-top:2px">media 2 apt</div>
+          </div>
+          <div style="background:var(--bg-sec);border-radius:8px;padding:12px">
+            <div style="font-size:11px;color:var(--text-sec);margin-bottom:4px">Prenotazioni totali</div>
+            <div style="font-size:20px;font-weight:700;color:var(--text)">{{ metrics.total }}</div>
+            <div style="font-size:10px;color:var(--text-ter);margin-top:2px">tutti gli anni</div>
+          </div>
+        </div>
+
+        <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+            <div style="font-size:13px;font-weight:600;color:var(--text)">Ricavi mensili <span style="color:var(--text-sec);font-weight:400">{{ dashYear }}</span></div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <button style="padding:3px 8px;font-size:14px;border-radius:8px;border:0.5px solid var(--border-sec);background:none;color:var(--text);cursor:pointer" onclick="{{ dashYearStep(-1) }}">‹</button>
+              <button style="padding:3px 8px;font-size:14px;border-radius:8px;border:0.5px solid var(--border-sec);background:none;color:var(--text);cursor:pointer" onclick="{{ dashYearStep(1) }}">›</button>
+            </div>
+          </div>
+          <div style="display:flex;gap:14px;margin-bottom:8px">
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-sec)"><div style="width:9px;height:9px;border-radius:50%;background:var(--apt1)"></div>Olbe</div>
+            <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:var(--text-sec)"><div style="width:9px;height:9px;border-radius:50%;background:var(--apt2)"></div>Poch</div>
+          </div>
+          <div style="display:flex;align-items:flex-end;gap:5px;height:90px;overflow-x:auto">
+            <sc-for list="{{ months }}" as="m" hint-placeholder-count="12">
+              <div style="display:flex;flex-direction:column;align-items:center;flex-shrink:0;width:24px">
+                <div style="display:flex;gap:2px;align-items:flex-end;height:80px">
+                  <div style="width:9px;border-radius:2px 2px 0 0;background:var(--apt1);height:{{ m.h1 }}px"></div>
+                  <div style="width:9px;border-radius:2px 2px 0 0;background:var(--apt2);height:{{ m.h2 }}px"></div>
+                </div>
+                <div style="font-size:9px;color:var(--text-ter);margin-top:3px">{{ m.label }}</div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+
+        <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:10px">Prossime prenotazioni</div>
+          <sc-if value="{{ upcoming.length }}" hint-placeholder-val="{{ 1 }}">
+            <sc-for list="{{ upcoming }}" as="b" hint-placeholder-count="3">
+              <div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:0.5px solid var(--border);flex-wrap:wrap">
+                <span style="font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;background:{{ b.aptBg }};color:{{ b.aptText }}">{{ b.aptLabel }}</span>
+                <span style="font-weight:600;flex:1;min-width:80px;font-size:13px;color:var(--text)">{{ b.guest }}</span>
+                <span style="color:var(--text-sec);font-size:11px">{{ b.dateStr }}</span>
+                <span style="font-weight:600;font-size:12px;color:var(--text);width:100%;text-align:right">€{{ b.amount }}</span>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ upcomingEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="color:var(--text-ter);font-size:13px;padding:1rem 0;text-align:center">Nessuna prenotazione futura</div>
+          </sc-if>
+        </div>
+
+        <sc-for list="{{ aptStats }}" as="a" hint-placeholder-count="2">
+          <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--text)">Apt. {{ a.name }} <span style="font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;background:{{ a.badgeBg }};color:{{ a.badgeText }}">Apt {{ a.apt }}</span> <span style="font-size:10px;color:var(--text-ter);font-weight:400">{{ a.year }}</span></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:13px"><span style="color:var(--text-sec)">Ricavi {{ a.year }}</span><strong style="color:var(--text)">€{{ a.rev }}</strong></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:13px"><span style="color:var(--text-sec)">Notti prenotate</span><strong style="color:var(--text)">{{ a.nights }}</strong></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:13px"><span style="color:var(--text-sec)">Prenotazioni</span><strong style="color:var(--text)">{{ a.count }}</strong></div>
+            <div style="display:flex;justify-content:space-between;padding:8px 0;font-size:13px"><span style="color:var(--text-sec)">Media per notte</span><strong style="color:var(--text)">{{ a.avg }}</strong></div>
+          </div>
+        </sc-for>
+      </sc-if>
+
+      <!-- CALENDARIO -->
+      <sc-if value="{{ isCalendario }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <select style="flex:1;padding:7px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;font-weight:600;background:var(--bg);color:var(--text)" value="{{ calMonth }}" onchange="{{ setCalMonth }}">
+            <sc-for list="{{ monthOptions }}" as="mo" hint-placeholder-count="12"><option value="{{ mo.i }}">{{ mo.name }}</option></sc-for>
+          </select>
+          <select style="width:84px;padding:7px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;font-weight:600;background:var(--bg);color:var(--text)" value="{{ calYear }}" onchange="{{ setCalYear }}">
+            <sc-for list="{{ yearOptions }}" as="y" hint-placeholder-count="7"><option value="{{ y }}">{{ y }}</option></sc-for>
+          </select>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:12px;overflow-x:auto;flex-wrap:nowrap">
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-sec);flex-shrink:0"><div style="width:8px;height:8px;border-radius:50%;background:var(--apt1caldot)"></div>Olbe</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-sec);flex-shrink:0"><div style="width:8px;height:8px;border-radius:50%;background:var(--apt2caldot)"></div>Poch</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-sec);flex-shrink:0"><div style="width:8px;height:8px;border-radius:50%;background:var(--airbnbdot)"></div>Airbnb</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-sec);flex-shrink:0"><div style="width:8px;height:8px;border-radius:50%;background:var(--bookingdot)"></div>Booking</div>
+          <div style="display:flex;align-items:center;gap:4px;font-size:10px;color:var(--text-sec);flex-shrink:0"><div style="width:8px;height:8px;border-radius:50%;background:var(--manualdot)"></div>Manuale</div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:12px">
+          <button style="flex:1;padding:6px 8px;font-size:12px;border-radius:20px;border:0.5px solid {{ calApt1BorderColor }};background:{{ calApt1Bg }};color:{{ calApt1Text }};font-weight:500;cursor:pointer" onclick="{{ setCalApt(1) }}">Olbe</button>
+          <button style="flex:1;padding:6px 8px;font-size:12px;border-radius:20px;border:0.5px solid {{ calApt2BorderColor }};background:{{ calApt2Bg }};color:{{ calApt2Text }};font-weight:500;cursor:pointer" onclick="{{ setCalApt(2) }}">Poch</button>
+          <button style="flex:1;padding:6px 8px;font-size:12px;border-radius:20px;border:0.5px solid {{ calApt0BorderColor }};background:{{ calApt0Bg }};color:{{ calApt0Text }};font-weight:500;cursor:pointer" onclick="{{ setCalApt(0) }}">Entrambi</button>
+        </div>
+        <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:12px;padding:8px">
+          <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px">
+            <sc-for list="{{ dayNames }}" as="dn" hint-placeholder-count="7">
+              <div style="text-align:center;font-size:9px;color:var(--text-ter);padding:4px 0;font-weight:600">{{ dn }}</div>
+            </sc-for>
+            <sc-for list="{{ calCells }}" as="cell" hint-placeholder-count="35">
+              <div onclick="{{ cell.onClick }}" style="min-height:44px;border-radius:6px;border:{{ cell.border }};padding:3px 3px;cursor:pointer;background:{{ cell.bg }};opacity:{{ cell.opacity }};display:flex;flex-direction:column;align-items:center">
+                <div style="font-size:11px;color:var(--text-sec);font-weight:500">{{ cell.num }}</div>
+                <div style="display:flex;gap:2px;margin-top:2px;flex-wrap:wrap;justify-content:center">
+                  <sc-for list="{{ cell.dots }}" as="d" hint-placeholder-count="0">
+                    <div style="width:5px;height:5px;border-radius:50%;background:{{ d.color }}"></div>
+                  </sc-for>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- PRENOTAZIONI -->
+      <sc-if value="{{ isPrenotazioni }}" hint-placeholder-val="{{ false }}">
+        <div style="display:flex;gap:8px;margin-bottom:10px">
+          <select style="flex:1;padding:6px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text)" value="{{ filterApt }}" onchange="{{ setFilterApt }}">
+            <option value="all">Tutti gli apt.</option><option value="1">Olbe</option><option value="2">Poch</option>
+          </select>
+          <select style="flex:1;padding:6px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:12px;background:var(--bg);color:var(--text)" value="{{ filterSrc }}" onchange="{{ setFilterSrc }}">
+            <option value="all">Tutte le fonti</option><option value="airbnb">Airbnb</option><option value="booking">Booking</option><option value="manual">Manuale</option>
+          </select>
+        </div>
+        <button style="width:100%;padding:9px;border-radius:8px;border:0.5px solid var(--text);background:var(--text);color:var(--bg);font-size:13px;font-weight:600;cursor:pointer;margin-bottom:12px" onclick="{{ openAddModal }}">+ Aggiungi prenotazione</button>
+        <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:12px;padding:6px 14px">
+          <sc-if value="{{ bookingRows.length }}" hint-placeholder-val="{{ 1 }}">
+            <sc-for list="{{ bookingRows }}" as="b" hint-placeholder-count="5">
+              <div style="padding:10px 0;border-bottom:0.5px solid var(--border)">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
+                  <span style="font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;background:{{ b.srcBg }};color:{{ b.srcText }}">{{ b.srcLabel }}</span>
+                  <span style="font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;background:{{ b.aptBg }};color:{{ b.aptText }}">{{ b.aptLabel }}</span>
+                  <span style="font-weight:600;font-size:13px;color:var(--text)">{{ b.guest }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;align-items:center">
+                  <span style="color:var(--text-sec);font-size:11px">{{ b.dateStr }}</span>
+                  <span style="font-weight:600;font-size:13px;color:var(--text)">€{{ b.amount }}</span>
+                </div>
+                <div style="display:flex;gap:8px;margin-top:6px">
+                  <button style="padding:4px 10px;font-size:11px;border-radius:6px;border:0.5px solid var(--border-sec);background:none;color:var(--text);cursor:pointer" onclick="{{ b.onEdit }}">✎ Modifica</button>
+                  <button style="padding:4px 10px;font-size:11px;border-radius:6px;border:0.5px solid var(--airbnbdot);color:var(--airbnb-text);background:none;cursor:pointer" onclick="{{ b.onDelete }}">✕ Elimina</button>
+                </div>
+              </div>
+            </sc-for>
+          </sc-if>
+          <sc-if value="{{ bookingRowsEmpty }}" hint-placeholder-val="{{ false }}">
+            <div style="color:var(--text-ter);font-size:13px;padding:1.5rem 0;text-align:center">Nessuna prenotazione trovata</div>
+          </sc-if>
+        </div>
+        <sc-if value="{{ totalPages }}" hint-placeholder-val="{{ 0 }}">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 2px;font-size:11px;color:var(--text-sec)">
+            <span>Pagina {{ page }} di {{ totalPages }}</span>
+            <div style="display:flex;gap:4px">
+              <button style="min-width:26px;height:26px;border-radius:6px;border:0.5px solid var(--border-sec);background:none;color:var(--text-sec);cursor:pointer" onclick="{{ prevPage }}">‹</button>
+              <button style="min-width:26px;height:26px;border-radius:6px;border:0.5px solid var(--border-sec);background:none;color:var(--text-sec);cursor:pointer" onclick="{{ nextPage }}">›</button>
+            </div>
+          </div>
+        </sc-if>
+      </sc-if>
+
+      <!-- PREZZI -->
+      <sc-if value="{{ isPrezzi }}" hint-placeholder-val="{{ false }}">
+        <sc-for list="{{ priceCards }}" as="pc" hint-placeholder-count="2">
+          <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+            <div style="font-size:13px;font-weight:600;display:flex;align-items:center;gap:8px;margin-bottom:8px;color:var(--text)">{{ pc.name }} <span style="font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;background:{{ pc.badgeBg }};color:{{ pc.badgeText }}">Apt {{ pc.apt }}</span></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:13px;gap:8px"><span style="color:var(--text)">Tariffa base</span><div style="display:flex;align-items:center;gap:6px"><input type="number" value="{{ pc.base }}" onchange="{{ pc.onBase }}" style="width:70px;padding:6px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;text-align:right;background:var(--bg);color:var(--text)"><span style="font-size:10px;color:var(--text-ter)">€/notte</span></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:13px;gap:8px"><span style="color:var(--text)">Weekend</span><div style="display:flex;align-items:center;gap:6px"><input type="number" value="{{ pc.weekend }}" onchange="{{ pc.onWeekend }}" style="width:70px;padding:6px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;text-align:right;background:var(--bg);color:var(--text)"><span style="font-size:10px;color:var(--text-ter)">€/notte</span></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:13px;gap:8px"><span style="color:var(--text)">Alta stagione</span><div style="display:flex;align-items:center;gap:6px"><input type="number" value="{{ pc.high }}" onchange="{{ pc.onHigh }}" style="width:70px;padding:6px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;text-align:right;background:var(--bg);color:var(--text)"><span style="font-size:10px;color:var(--text-ter)">€/notte</span></div></div>
+            <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:13px;gap:8px"><span style="color:var(--text)">Bassa stagione</span><div style="display:flex;align-items:center;gap:6px"><input type="number" value="{{ pc.low }}" onchange="{{ pc.onLow }}" style="width:70px;padding:6px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;text-align:right;background:var(--bg);color:var(--text)"><span style="font-size:10px;color:var(--text-ter)">€/notte</span></div></div>
+          </div>
+        </sc-for>
+        <div style="background:var(--bg);border:0.5px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px">
+          <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:var(--text)">Tariffe extra</div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:0.5px solid var(--border);font-size:13px;gap:8px"><span style="color:var(--text)">Pulizie</span><div style="display:flex;align-items:center;gap:6px"><input type="number" value="{{ cleaning }}" onchange="{{ onCleaning }}" style="width:70px;padding:6px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;text-align:right;background:var(--bg);color:var(--text)"><span style="font-size:10px;color:var(--text-ter)">€/sogg.</span></div></div>
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:8px 0;font-size:13px;gap:8px"><span style="color:var(--text)">Caparra</span><div style="display:flex;align-items:center;gap:6px"><input type="number" value="{{ deposit }}" onchange="{{ onDeposit }}" style="width:70px;padding:6px 8px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;text-align:right;background:var(--bg);color:var(--text)"><span style="font-size:10px;color:var(--text-ter)">€</span></div></div>
+        </div>
+        <button style="width:100%;padding:10px;border-radius:8px;border:0.5px solid var(--text);background:var(--text);color:var(--bg);font-size:13px;font-weight:600;cursor:pointer" onclick="{{ savePrices }}">Salva tutte le tariffe</button>
+      </sc-if>
+
+      <!-- BOOKING MODAL (bottom sheet) -->
+      <sc-if value="{{ modalOpen }}" hint-placeholder-val="{{ false }}">
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:50;display:flex;align-items:flex-end;justify-content:center" onclick="{{ closeModalBg }}">
+          <div style="background:var(--bg);border-radius:16px 16px 0 0;padding:18px 18px 24px;width:100%;max-height:80%;overflow-y:auto;box-sizing:border-box" onclick="{{ stopProp }}">
+            <div style="font-size:16px;font-weight:700;margin-bottom:14px;color:var(--text)">{{ modalTitle }}</div>
+            <div style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-sec);font-weight:500;margin-bottom:4px;display:block">Appartamento *</label>
+              <select value="{{ form.apt }}" onchange="{{ setFormApt }}" style="width:100%;padding:8px 10px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);box-sizing:border-box">
+                <option value="">Seleziona...</option><option value="1">Olbe (Apt 1)</option><option value="2">Poch (Apt 2)</option>
+              </select>
+            </div>
+            <div style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-sec);font-weight:500;margin-bottom:4px;display:block">Nome ospite *</label>
+              <input value="{{ form.guest }}" oninput="{{ setFormGuest }}" placeholder="Nome e cognome" style="width:100%;padding:8px 10px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);box-sizing:border-box">
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+              <div><label style="font-size:12px;color:var(--text-sec);font-weight:500;margin-bottom:4px;display:block">Check-in *</label><input type="date" value="{{ form.checkin }}" onchange="{{ setFormCheckin }}" style="width:100%;padding:8px 10px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);box-sizing:border-box"></div>
+              <div><label style="font-size:12px;color:var(--text-sec);font-weight:500;margin-bottom:4px;display:block">Check-out *</label><input type="date" value="{{ form.checkout }}" onchange="{{ setFormCheckout }}" style="width:100%;padding:8px 10px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);box-sizing:border-box"></div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px">
+              <div><label style="font-size:12px;color:var(--text-sec);font-weight:500;margin-bottom:4px;display:block">Importo (€)</label><input type="number" value="{{ form.amount }}" oninput="{{ setFormAmount }}" placeholder="0" style="width:100%;padding:8px 10px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);box-sizing:border-box"></div>
+              <div><label style="font-size:12px;color:var(--text-sec);font-weight:500;margin-bottom:4px;display:block">Fonte</label>
+                <select value="{{ form.source }}" onchange="{{ setFormSource }}" style="width:100%;padding:8px 10px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:13px;background:var(--bg);color:var(--text);box-sizing:border-box">
+                  <option value="manual">Manuale</option><option value="airbnb">Airbnb</option><option value="booking">Booking</option>
+                </select>
+              </div>
+            </div>
+            <div style="margin-bottom:12px"><label style="font-size:12px;color:var(--text-sec);font-weight:500;margin-bottom:4px;display:block">Numero ospiti</label>
+              <input type="number" value="{{ form.guestsNum }}" oninput="{{ setFormGuestsNum }}" placeholder="2" style="width:100%;padding:8px 10px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);box-sizing:border-box">
+            </div>
+            <div style="margin-bottom:16px"><label style="font-size:12px;color:var(--text-sec);font-weight:500;margin-bottom:4px;display:block">Note</label>
+              <textarea rows="3" value="{{ form.notes }}" oninput="{{ setFormNotes }}" placeholder="Richieste speciali, animali, ecc." style="width:100%;padding:8px 10px;border:0.5px solid var(--border-sec);border-radius:8px;font-size:14px;background:var(--bg);color:var(--text);box-sizing:border-box;resize:vertical"></textarea>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+              <button style="padding:8px 16px;border-radius:8px;border:0.5px solid var(--border-sec);background:none;color:var(--text);font-size:13px;cursor:pointer" onclick="{{ closeModal }}">Annulla</button>
+              <button style="padding:8px 16px;border-radius:8px;border:0.5px solid var(--text);background:var(--text);color:var(--bg);font-size:13px;font-weight:600;cursor:pointer" onclick="{{ saveBooking }}">Salva</button>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- DAY POPUP (bottom sheet) -->
+      <sc-if value="{{ dayPopup }}" hint-placeholder-val="{{ false }}">
+        <div style="position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:50;display:flex;align-items:flex-end;justify-content:center" onclick="{{ closeDayPopupBg }}">
+          <div style="background:var(--bg);border-radius:16px 16px 0 0;padding:18px 18px 24px;width:100%;max-height:70%;overflow-y:auto;box-sizing:border-box" onclick="{{ stopProp }}">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div style="font-size:16px;font-weight:700;color:var(--text)">{{ dayPopup.dateLabel }}</div>
+              <button style="background:none;border:none;cursor:pointer;font-size:18px;color:var(--text-ter)" onclick="{{ closeDayPopup }}">✕</button>
+            </div>
+            <sc-for list="{{ dayPopup.bookings }}" as="b" hint-placeholder-count="1">
+              <div style="padding:10px 0;border-bottom:0.5px solid var(--border)">
+                <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:5px">
+                  <span style="font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;background:{{ b.srcBg }};color:{{ b.srcText }}">{{ b.srcLabel }}</span>
+                  <span style="font-size:10px;padding:2px 7px;border-radius:9px;font-weight:600;background:{{ b.aptBg }};color:{{ b.aptText }}">{{ b.aptLabel }}</span>
+                  <span style="font-weight:600;font-size:13px;color:var(--text)">{{ b.guest }}</span>
+                </div>
+                <div style="font-size:12px;color:var(--text-sec);margin-bottom:6px">{{ b.checkinFull }} → {{ b.checkoutFull }} · {{ b.nights }} notti · €{{ b.amount }}</div>
+                <button style="padding:4px 10px;font-size:11px;border-radius:6px;border:0.5px solid var(--border-sec);background:none;color:var(--text);cursor:pointer" onclick="{{ b.onEdit }}">✎ Modifica</button>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </sc-if>
+
+      <!-- TOAST -->
+      <sc-if value="{{ toast.show }}" hint-placeholder-val="{{ false }}">
+        <div style="position:fixed;bottom:80px;left:50%;transform:translateX(-50%);background:var(--text);color:var(--bg);padding:9px 16px;border-radius:8px;font-size:12px;font-weight:500;z-index:60">{{ toast.msg }}</div>
+      </sc-if>
+
+    </div>
+
+    <!-- BOTTOM NAV -->
+    <div style="background:var(--bg);border-top:0.5px solid var(--border);display:flex;flex-shrink:0;padding:6px 4px 2px">
+      <sc-for list="{{ navItems }}" as="n" hint-placeholder-count="4">
+        <button style="flex:1;background:none;border:none;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px;padding:4px 0;color:{{ n.color }}" onclick="{{ n.onClick }}">
+          <div style="width:16px;height:16px;display:flex;align-items:center;justify-content:center">
+            <sc-if value="{{ n.isGrid }}" hint-placeholder-val="{{ false }}">
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:2px;width:16px;height:16px">
+                <div style="background:{{ n.color }};border-radius:2px"></div><div style="background:{{ n.color }};border-radius:2px"></div>
+                <div style="background:{{ n.color }};border-radius:2px"></div><div style="background:{{ n.color }};border-radius:2px"></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ n.isCalendar }}" hint-placeholder-val="{{ false }}">
+              <div style="width:16px;height:16px;border:1.6px solid {{ n.color }};border-radius:3px;position:relative">
+                <div style="position:absolute;top:3px;left:0;right:0;height:1.6px;background:{{ n.color }}"></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ n.isList }}" hint-placeholder-val="{{ false }}">
+              <div style="display:flex;flex-direction:column;gap:3px;width:16px;justify-content:center">
+                <div style="height:2px;background:{{ n.color }};border-radius:1px;width:100%"></div>
+                <div style="height:2px;background:{{ n.color }};border-radius:1px;width:70%"></div>
+                <div style="height:2px;background:{{ n.color }};border-radius:1px;width:100%"></div>
+              </div>
+            </sc-if>
+            <sc-if value="{{ n.isCoin }}" hint-placeholder-val="{{ false }}">
+              <div style="width:16px;height:16px;border-radius:50%;border:1.6px solid {{ n.color }};display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:{{ n.color }}">€</div>
+            </sc-if>
+          </div>
+          <div style="font-size:10px;font-weight:{{ n.weight }}">{{ n.label }}</div>
+        </button>
+      </sc-for>
+    </div>
+    <x-import component-from-global-scope="AndroidNavBar" dark="{{ dark }}" hint-size="100%,24px"></x-import>
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+const MONTHS_IT = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+const MONTHS_SHORT = ['Gen','Feb','Mar','Apr','Mag','Giu','Lug','Ago','Set','Ott','Nov','Dic'];
+const DAY_NAMES = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
+const APT_NAMES = {1:'Olbe', 2:'Poch'};
+const SRC_LABEL = {airbnb:'Airbnb', booking:'Booking', manual:'Manuale'};
+
+function pad(n){ return String(n).padStart(2,'0'); }
+function fmtShort(d){ const dd=new Date(d); return dd.getDate()+'/'+(dd.getMonth()+1); }
+function fmtFull(d){ const dd=new Date(d); return dd.getDate()+' '+MONTHS_SHORT[dd.getMonth()]+' '+dd.getFullYear(); }
+function nights(ci,co){ return Math.round((new Date(co)-new Date(ci))/86400000); }
+
+class Component extends DCLogic {
+  state = {
+    dark: false,
+    tab: 'dashboard',
+    dashYear: 2026,
+    calYear: 2026, calMonth: 6, calApt: 1,
+    dayPopupDate: null,
+    modalOpen: false, editingId: null,
+    form: { apt:'', guest:'', checkin:'', checkout:'', amount:'', source:'manual', guestsNum:'', notes:'' },
+    filterApt: 'all', filterSrc: 'all', page: 1,
+    toast: { show:false, msg:'' },
+    prices: {
+      1: { base:120, weekend:160, high:200, low:90 },
+      2: { base:100, weekend:140, high:170, low:80 },
+    },
+    extras: { cleaning:60, deposit:200 },
+    bookings: [
+      {id:'b1', apt:1, guest:'Marco Rossi', checkin:'2026-01-05', checkout:'2026-01-10', amount:450, source:'airbnb', guestsNum:2, notes:''},
+      {id:'b2', apt:2, guest:'Giulia Bianchi', checkin:'2026-02-14', checkout:'2026-02-18', amount:620, source:'booking', guestsNum:4, notes:''},
+      {id:'b3', apt:1, guest:'Luca Ferrari', checkin:'2026-03-01', checkout:'2026-03-06', amount:500, source:'manual', guestsNum:2, notes:''},
+      {id:'b4', apt:2, guest:'Sara Colombo', checkin:'2026-04-10', checkout:'2026-04-14', amount:380, source:'airbnb', guestsNum:3, notes:''},
+      {id:'b5', apt:1, guest:'Andrea Romano', checkin:'2026-05-20', checkout:'2026-05-25', amount:700, source:'booking', guestsNum:5, notes:''},
+      {id:'b6', apt:2, guest:'Elena Ricci', checkin:'2026-06-01', checkout:'2026-06-08', amount:910, source:'airbnb', guestsNum:4, notes:''},
+      {id:'b7', apt:1, guest:'Davide Marino', checkin:'2026-06-15', checkout:'2026-06-20', amount:550, source:'manual', guestsNum:2, notes:''},
+      {id:'b8', apt:2, guest:'Chiara Greco', checkin:'2026-07-01', checkout:'2026-07-07', amount:780, source:'airbnb', guestsNum:3, notes:''},
+      {id:'b9', apt:1, guest:'Francesco Bruno', checkin:'2026-07-20', checkout:'2026-07-26', amount:640, source:'booking', guestsNum:2, notes:'Allergia ai gatti'},
+      {id:'b10', apt:2, guest:'Martina Conti', checkin:'2026-08-05', checkout:'2026-08-12', amount:1050, source:'airbnb', guestsNum:6, notes:''},
+      {id:'b11', apt:1, guest:'Simone De Luca', checkin:'2026-08-15', checkout:'2026-08-20', amount:590, source:'manual', guestsNum:2, notes:''},
+      {id:'b12', apt:2, guest:'Valentina Rinaldi', checkin:'2026-09-10', checkout:'2026-09-14', amount:420, source:'booking', guestsNum:2, notes:''},
+      {id:'b13', apt:1, guest:'Matteo Costa', checkin:'2026-10-03', checkout:'2026-10-08', amount:480, source:'airbnb', guestsNum:3, notes:''},
+      {id:'b14', apt:2, guest:'Federica Gallo', checkin:'2025-12-20', checkout:'2025-12-27', amount:890, source:'manual', guestsNum:4, notes:''},
+    ],
+  };
+
+  now = new Date('2026-07-16');
+
+  colors(dark){
+    return dark ? {
+      bg:'#1c1c1a', bgSec:'#252523', bgTer:'#2e2e2c',
+      text:'#f0efea', textSec:'#a0a09a', textTer:'#6a6a64',
+      border:'rgba(255,255,255,0.1)', borderSec:'rgba(255,255,255,0.2)',
+      apt1:'#1D9E75', apt1Bg:'#085041', apt1Text:'#9FE1CB',
+      apt2:'#378ADD', apt2Bg:'#0C447C', apt2Text:'#B5D4F4',
+      airbnbBg:'#501313', airbnbText:'#F7C1C1', airbnbDot:'#E24B4A',
+      bookingBg:'#042C53', bookingText:'#B5D4F4', bookingDot:'#378ADD',
+      manualBg:'#173404', manualText:'#C0DD97', manualDot:'#639922',
+      apt1CalBg:'#3B0764', apt1CalText:'#E9D5FF', apt1CalDot:'#9333EA',
+      apt2CalBg:'#4A044E', apt2CalText:'#F5D0FE', apt2CalDot:'#C026D3',
+    } : {
+      bg:'#ffffff', bgSec:'#f5f5f3', bgTer:'#eeede9',
+      text:'#1a1a18', textSec:'#666660', textTer:'#999992',
+      border:'rgba(0,0,0,0.12)', borderSec:'rgba(0,0,0,0.22)',
+      apt1:'#1D9E75', apt1Bg:'#E1F5EE', apt1Text:'#0F6E56',
+      apt2:'#378ADD', apt2Bg:'#E6F1FB', apt2Text:'#185FA5',
+      airbnbBg:'#FCEBEB', airbnbText:'#A32D2D', airbnbDot:'#E24B4A',
+      bookingBg:'#E6F1FB', bookingText:'#0C447C', bookingDot:'#378ADD',
+      manualBg:'#EAF3DE', manualText:'#3B6D11', manualDot:'#639922',
+      apt1CalBg:'#F3E8FD', apt1CalText:'#7E22CE', apt1CalDot:'#9333EA',
+      apt2CalBg:'#FCE7F6', apt2CalText:'#A21CAF', apt2CalDot:'#C026D3',
+    };
+  }
+
+  showToast(msg){
+    this.setState({ toast: { show:true, msg } });
+    clearTimeout(this._toastT);
+    this._toastT = setTimeout(()=>this.setState({ toast:{ show:false, msg:'' } }), 2200);
+  }
+
+  render_dashboard(c){
+    const now = this.now;
+    const bookings = this.state.bookings;
+    const cm = now.getMonth(), curYear = now.getFullYear();
+    const thisMonth = bookings.filter(b => { const ci=new Date(b.checkin); return ci.getMonth()===cm && ci.getFullYear()===curYear; });
+    const revMonth = thisMonth.reduce((s,b)=>s+Number(b.amount||0),0);
+    const nightsMonth = thisMonth.reduce((s,b)=>s+nights(b.checkin,b.checkout),0);
+    const daysInMonth = new Date(curYear,cm+1,0).getDate();
+    const occRate = Math.min(100, Math.round(nightsMonth/(daysInMonth*2)*100));
+
+    const dashYear = this.state.dashYear;
+    const monthsData = [];
+    let maxRev = 1;
+    for(let i=0;i<12;i++){
+      const r1 = bookings.filter(b=>b.apt===1 && new Date(b.checkin).getMonth()===i && new Date(b.checkin).getFullYear()===dashYear).reduce((s,b)=>s+Number(b.amount||0),0);
+      const r2 = bookings.filter(b=>b.apt===2 && new Date(b.checkin).getMonth()===i && new Date(b.checkin).getFullYear()===dashYear).reduce((s,b)=>s+Number(b.amount||0),0);
+      maxRev = Math.max(maxRev, r1, r2);
+      monthsData.push({label:MONTHS_SHORT[i], r1, r2});
+    }
+    const months = monthsData.map(m=>({...m, h1: Math.max(Math.round(m.r1/maxRev*80),3), h2: Math.max(Math.round(m.r2/maxRev*80),3)}));
+
+    const upcoming = [...bookings].filter(b=>new Date(b.checkin)>=now).sort((a,b)=>new Date(a.checkin)-new Date(b.checkin)).slice(0,5).map(b=>({
+      id:b.id, guest:b.guest, amount:b.amount, dateStr: fmtShort(b.checkin)+' → '+fmtShort(b.checkout),
+      aptLabel: APT_NAMES[b.apt], aptBg: b.apt===1?c.apt1Bg:c.apt2Bg, aptText: b.apt===1?c.apt1Text:c.apt2Text,
+    }));
+
+    const aptStats = [1,2].map(apt=>{
+      const ab = bookings.filter(b=>b.apt===apt && new Date(b.checkin).getFullYear()===dashYear);
+      const rev = ab.reduce((s,b)=>s+Number(b.amount||0),0);
+      const nn = ab.reduce((s,b)=>s+nights(b.checkin,b.checkout),0);
+      return { apt, name: APT_NAMES[apt], badgeBg: apt===1?c.apt1Bg:c.apt2Bg, badgeText: apt===1?c.apt1Text:c.apt2Text,
+        rev, nights: nn, count: ab.length, avg: nn? '€'+Math.round(rev/nn) : '-', year: dashYear };
+    });
+
+    return {
+      metrics: { revMonth, nightsMonth, occRate, total: bookings.length, monthLabel: MONTHS_SHORT[cm] },
+      months, dashYear, upcoming, upcomingEmpty: upcoming.length===0, aptStats,
+    };
+  }
+
+  render_calendario(c){
+    const { calYear, calMonth, calApt } = this.state;
+    const bookings = this.state.bookings;
+    const firstDay = new Date(calYear, calMonth, 1);
+    let startDow = firstDay.getDay(); startDow = startDow===0 ? 6 : startDow-1;
+    const daysInMonth = new Date(calYear, calMonth+1, 0).getDate();
+    const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+    const today = this.now;
+    const aptFilter = calApt===0 ? [1,2] : [calApt];
+    const cells = [];
+    for(let i=0;i<startDow;i++) cells.push({key:'p'+i, num: daysInPrev-startDow+i+1, bg:c.bgSec, opacity:0.35, border:'0.5px solid '+c.border, dots:[], onClick:null});
+    for(let d=1; d<=daysInMonth; d++){
+      const ds = calYear+'-'+pad(calMonth+1)+'-'+pad(d);
+      const isToday = new Date(ds).toDateString()===today.toDateString();
+      const dayBooks = bookings.filter(b=>aptFilter.includes(b.apt) && ds>=b.checkin && ds<b.checkout);
+      const dots = dayBooks.slice(0,4).map(b=>({color: b.source==='airbnb'?c.airbnbDot:b.source==='booking'?c.bookingDot:c.manualDot}));
+      const occupied = dayBooks.length>0;
+      cells.push({
+        key:'d'+d, num:d,
+        bg: occupied ? (dayBooks[0].apt===1?c.apt1CalBg:c.apt2CalBg) : c.bg,
+        opacity:1,
+        border: isToday ? '1.5px solid '+c.text : '0.5px solid '+c.border,
+        dots,
+        onClick: dayBooks.length ? (()=>this.openDayPopup(ds)) : null,
+      });
+    }
+    const total = startDow + daysInMonth; const rem = total%7===0 ? 0 : 7-(total%7);
+    for(let i=1;i<=rem;i++) cells.push({key:'n'+i, num:i, bg:c.bgSec, opacity:0.35, border:'0.5px solid '+c.border, dots:[], onClick:null});
+
+    const monthOptions = MONTHS_IT.map((name,i)=>({i,name}));
+    const curY = today.getFullYear();
+    const yearOptions = []; for(let y=curY-3;y<=curY+3;y++) yearOptions.push(y);
+
+    const dayPopupBookings = (dateStr)=>{
+      const dayBooks = bookings.filter(b=>b.checkin<=dateStr && dateStr<b.checkout);
+      return dayBooks.map(b=>({
+        id:b.id, guest:b.guest, amount:b.amount, nights: nights(b.checkin,b.checkout),
+        checkinFull: fmtFull(b.checkin), checkoutFull: fmtFull(b.checkout),
+        srcLabel: SRC_LABEL[b.source]||b.source, srcBg: b.source==='airbnb'?c.airbnbBg:b.source==='booking'?c.bookingBg:c.manualBg,
+        srcText: b.source==='airbnb'?c.airbnbText:b.source==='booking'?c.bookingText:c.manualText,
+        aptLabel: APT_NAMES[b.apt], aptBg: b.apt===1?c.apt1Bg:c.apt2Bg, aptText: b.apt===1?c.apt1Text:c.apt2Text,
+        onEdit: ()=>{ this.closeDayPopup(); this.openEditModal(b.id); },
+      }));
+    };
+
+    let dayPopup = false;
+    if(this.state.dayPopupDate){
+      dayPopup = { dateLabel: fmtFull(this.state.dayPopupDate), bookings: dayPopupBookings(this.state.dayPopupDate) };
+    }
+
+    return {
+      calYear, calMonth, calApt, calCells: cells, dayNames: DAY_NAMES, monthOptions, yearOptions,
+      calApt1Bg: calApt===1?c.apt1Bg:'transparent', calApt1Text: calApt===1?c.apt1Text:c.textSec, calApt1BorderColor: calApt===1?c.apt1:c.borderSec,
+      calApt2Bg: calApt===2?c.apt2Bg:'transparent', calApt2Text: calApt===2?c.apt2Text:c.textSec, calApt2BorderColor: calApt===2?c.apt2:c.borderSec,
+      calApt0Bg: calApt===0?c.apt1Bg:'transparent', calApt0Text: calApt===0?c.apt1Text:c.textSec, calApt0BorderColor: calApt===0?c.apt1:c.borderSec,
+      dayPopup,
+    };
+  }
+
+  render_prenotazioni(c){
+    const { filterApt, filterSrc } = this.state;
+    let filtered = this.state.bookings.filter(b => (filterApt==='all'||b.apt===parseInt(filterApt)) && (filterSrc==='all'||b.source===filterSrc));
+    filtered.sort((a,b)=>new Date(b.checkin)-new Date(a.checkin));
+    const perPage = 6;
+    const totalPages = Math.max(1, Math.ceil(filtered.length/perPage));
+    let page = this.state.page; if(page>totalPages) page=totalPages;
+    const start = (page-1)*perPage;
+    const pageItems = filtered.slice(start, start+perPage);
+    const rows = pageItems.map(b=>({
+      id:b.id, guest:b.guest, amount:b.amount, dateStr: fmtShort(b.checkin)+' → '+fmtShort(b.checkout),
+      srcLabel: SRC_LABEL[b.source]||b.source, srcBg: b.source==='airbnb'?c.airbnbBg:b.source==='booking'?c.bookingBg:c.manualBg,
+      srcText: b.source==='airbnb'?c.airbnbText:b.source==='booking'?c.bookingText:c.manualText,
+      aptLabel: APT_NAMES[b.apt], aptBg: b.apt===1?c.apt1Bg:c.apt2Bg, aptText: b.apt===1?c.apt1Text:c.apt2Text,
+      onEdit: ()=>this.openEditModal(b.id), onDelete: ()=>this.deleteBooking(b.id),
+    }));
+    return { filterApt, filterSrc, bookingRows: rows, bookingRowsEmpty: rows.length===0, page, totalPages: totalPages>1?totalPages:0 };
+  }
+
+  render_prezzi(c){
+    const p = this.state.prices, ex = this.state.extras;
+    const mk = (apt, name) => ({
+      apt, name, badgeBg: apt===1?c.apt1Bg:c.apt2Bg, badgeText: apt===1?c.apt1Text:c.apt2Text,
+      base: p[apt].base, weekend: p[apt].weekend, high: p[apt].high, low: p[apt].low,
+      onBase: (e)=>this.setPrice(apt,'base',e.target.value), onWeekend: (e)=>this.setPrice(apt,'weekend',e.target.value),
+      onHigh: (e)=>this.setPrice(apt,'high',e.target.value), onLow: (e)=>this.setPrice(apt,'low',e.target.value),
+    });
+    return {
+      priceCards: [mk(1,'Olbe'), mk(2,'Poch')],
+      cleaning: ex.cleaning, deposit: ex.deposit,
+      onCleaning: (e)=>this.setState({extras:{...this.state.extras, cleaning: parseInt(e.target.value)||0}}),
+      onDeposit: (e)=>this.setState({extras:{...this.state.extras, deposit: parseInt(e.target.value)||0}}),
+    };
+  }
+
+  setPrice(apt, field, val){
+    this.setState({ prices: { ...this.state.prices, [apt]: { ...this.state.prices[apt], [field]: parseInt(val)||0 } } });
+  }
+  savePrices = () => { this.showToast('Tariffe salvate!'); };
+
+  openDayPopup(ds){ this.setState({ dayPopupDate: ds }); }
+  closeDayPopup = () => this.setState({ dayPopupDate: null });
+  closeDayPopupBg = () => this.setState({ dayPopupDate: null });
+
+  openAddModal = () => {
+    this.setState({ modalOpen:true, editingId:null, form:{ apt:'', guest:'', checkin: this.now.toISOString().split('T')[0], checkout:'', amount:'', source:'manual', guestsNum:'', notes:'' } });
+  };
+  openEditModal(id){
+    const b = this.state.bookings.find(x=>x.id===id);
+    if(!b) return;
+    this.setState({ modalOpen:true, editingId:id, form:{ apt:String(b.apt), guest:b.guest, checkin:b.checkin, checkout:b.checkout, amount:String(b.amount), source:b.source, guestsNum:String(b.guestsNum||''), notes:b.notes||'' } });
+  }
+  closeModal = () => this.setState({ modalOpen:false, editingId:null });
+  closeModalBg = () => this.setState({ modalOpen:false, editingId:null });
+  stopProp = (e) => e.stopPropagation();
+
+  setFormApt = (e)=>this.setState({form:{...this.state.form, apt:e.target.value}});
+  setFormGuest = (e)=>this.setState({form:{...this.state.form, guest:e.target.value}});
+  setFormCheckin = (e)=>this.setState({form:{...this.state.form, checkin:e.target.value}});
+  setFormCheckout = (e)=>this.setState({form:{...this.state.form, checkout:e.target.value}});
+  setFormAmount = (e)=>this.setState({form:{...this.state.form, amount:e.target.value}});
+  setFormSource = (e)=>this.setState({form:{...this.state.form, source:e.target.value}});
+  setFormGuestsNum = (e)=>this.setState({form:{...this.state.form, guestsNum:e.target.value}});
+  setFormNotes = (e)=>this.setState({form:{...this.state.form, notes:e.target.value}});
+
+  saveBooking = () => {
+    const f = this.state.form;
+    if(!f.apt){ this.showToast("Seleziona l'appartamento."); return; }
+    if(!f.guest.trim()){ this.showToast('Inserisci il nome ospite.'); return; }
+    if(!f.checkin||!f.checkout){ this.showToast('Inserisci le date.'); return; }
+    if(new Date(f.checkout)<=new Date(f.checkin)){ this.showToast('Check-out deve essere dopo check-in.'); return; }
+    const data = { apt: parseInt(f.apt), guest: f.guest.trim(), checkin: f.checkin, checkout: f.checkout,
+      amount: parseFloat(f.amount)||0, source: f.source, guestsNum: parseInt(f.guestsNum)||0, notes: f.notes };
+    if(this.state.editingId){
+      this.setState({ bookings: this.state.bookings.map(b=>b.id===this.state.editingId?{...b,...data}:b), modalOpen:false, editingId:null });
+      this.showToast('Prenotazione aggiornata!');
+    } else {
+      const id = 'b'+Date.now();
+      this.setState({ bookings: [...this.state.bookings, {id, ...data}], modalOpen:false });
+      this.showToast('Prenotazione salvata!');
+    }
+  };
+  deleteBooking(id){
+    this.setState({ bookings: this.state.bookings.filter(b=>b.id!==id) });
+    this.showToast('Prenotazione eliminata');
+  }
+
+  setFilterApt = (e)=>this.setState({filterApt:e.target.value, page:1});
+  setFilterSrc = (e)=>this.setState({filterSrc:e.target.value, page:1});
+  prevPage = () => this.setState({ page: Math.max(1, this.state.page-1) });
+  nextPage = () => this.setState({ page: this.state.page+1 });
+
+  setCalMonth = (e)=>this.setState({calMonth: parseInt(e.target.value)});
+  setCalYear = (e)=>this.setState({calYear: parseInt(e.target.value)});
+  setCalApt(n){ this.setState({calApt:n}); }
+  dashYearStep(dir){ this.setState({ dashYear: this.state.dashYear+dir }); }
+  toggleTheme = () => this.setState({ dark: !this.state.dark });
+  setTab(t){ this.setState({ tab: t, page:1 }); }
+
+  renderVals() {
+    const dark = this.state.dark;
+    const c = this.colors(dark);
+    const tab = this.state.tab;
+
+    const themeVars = `--bg:${c.bg};--bg-sec:${c.bgSec};--bg-ter:${c.bgTer};--text:${c.text};--text-sec:${c.textSec};--text-ter:${c.textTer};`+
+      `--border:${c.border};--border-sec:${c.borderSec};--apt1:${c.apt1};--apt1-bg:${c.apt1Bg};--apt1-text:${c.apt1Text};`+
+      `--apt2:${c.apt2};--apt2-bg:${c.apt2Bg};--apt2-text:${c.apt2Text};--airbnb-text:${c.airbnbText};--airbnbdot:${c.airbnbDot};`+
+      `--bookingdot:${c.bookingDot};--manualdot:${c.manualDot};--apt1caldot:${c.apt1CalDot};--apt2caldot:${c.apt2CalDot};`;
+
+    const navDef = [
+      {id:'dashboard', label:'Dashboard', type:'isGrid'},
+      {id:'calendario', label:'Calendario', type:'isCalendar'},
+      {id:'prenotazioni', label:'Prenotazioni', type:'isList'},
+      {id:'prezzi', label:'Prezzi', type:'isCoin'},
+    ];
+    const navItems = navDef.map(n => ({
+      label: n.label, isGrid:false, isCalendar:false, isList:false, isCoin:false, [n.type]: true,
+      color: tab===n.id ? c.text : c.textTer,
+      weight: tab===n.id ? 700 : 500,
+      onClick: ()=>this.setTab(n.id),
+    }));
+
+    let screenVals = {};
+    if(tab==='dashboard') screenVals = this.render_dashboard(c);
+    if(tab==='calendario') screenVals = this.render_calendario(c);
+    if(tab==='prenotazioni') screenVals = this.render_prenotazioni(c);
+    if(tab==='prezzi') screenVals = this.render_prezzi(c);
+
+    return {
+      dark, themeVars, themeIcon: dark ? '🌙' : '☀️',
+      isDashboard: tab==='dashboard', isCalendario: tab==='calendario', isPrenotazioni: tab==='prenotazioni', isPrezzi: tab==='prezzi',
+      navItems,
+      toggleTheme: this.toggleTheme,
+      toast: this.state.toast,
+      modalOpen: this.state.modalOpen,
+      modalTitle: this.state.editingId ? 'Modifica prenotazione' : 'Nuova prenotazione',
+      form: this.state.form,
+      setFormApt: this.setFormApt, setFormGuest: this.setFormGuest, setFormCheckin: this.setFormCheckin, setFormCheckout: this.setFormCheckout,
+      setFormAmount: this.setFormAmount, setFormSource: this.setFormSource, setFormGuestsNum: this.setFormGuestsNum, setFormNotes: this.setFormNotes,
+      openAddModal: this.openAddModal, closeModal: this.closeModal, closeModalBg: this.closeModalBg, saveBooking: this.saveBooking, stopProp: this.stopProp,
+      dashYearStep: (dir)=>()=>this.dashYearStep(dir),
+      setCalMonth: this.setCalMonth, setCalYear: this.setCalYear,
+      setCalApt: (n)=>()=>this.setCalApt(n),
+      closeDayPopup: this.closeDayPopup, closeDayPopupBg: this.closeDayPopupBg,
+      setFilterApt: this.setFilterApt, setFilterSrc: this.setFilterSrc, prevPage: this.prevPage, nextPage: this.nextPage,
+      ...screenVals,
+    };
+  }
+
+}
+
+</script>
+</body>
+</html>

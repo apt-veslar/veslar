@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#1a1a18">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Appartamenti">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="favicon-16x16.png">
+<title>Gestione Appartamenti Montagna</title>
+<link rel="stylesheet" href="styles.css">
+<link rel="stylesheet" href="mobile.css">
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-icon">🏔️</div>
+    <div class="login-title">Gestione Appartamenti</div>
+    <div class="login-sub">Accedi con il tuo account Google per visualizzare e gestire le tue prenotazioni in sicurezza.</div>
+    <button class="btn-google" onclick="signInWithGoogle()">
+      <svg class="google-logo" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+      Accedi con Google
+    </button>
+    <div class="login-note">I tuoi dati sono privati e visibili solo al tuo account Google.</div>
+    <div id="login-error" style="color:#A32D2D;font-size:12px;margin-top:12px;display:none;"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app-screen">
+  <div class="m-header">
+    <div>
+      <div class="m-header-title">🏔️ Gestione Appartamenti</div>
+      <div class="m-header-sub">Montagna · 2 proprietà <span class="saving-indicator" id="saving-indicator">· salvataggio...</span></div>
+    </div>
+    <button class="theme-toggle" id="theme-btn" onclick="toggleTheme()" title="Cambia tema">☀️</button>
+  </div>
+
+  <div class="m-content" id="m-content">
+
+    <!-- DASHBOARD -->
+    <div id="tab-dashboard" class="m-section active">
+      <div class="grid2" id="m-metrics"><div class="loading">Caricamento...</div></div>
+      <div class="card">
+        <div class="card-title" style="justify-content:space-between;">
+          <span>Ricavi mensili <span id="m-dash-year-label" style="color:var(--text-sec);font-weight:400;font-size:13px;"></span></span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <button class="btn btn-sm" style="padding:3px 8px;font-size:14px;" onclick="dashYearStep(-1)">‹</button>
+            <button class="btn btn-sm" style="padding:3px 8px;font-size:14px;" onclick="dashYearStep(1)">›</button>
+          </div>
+        </div>
+        <div class="legend-row">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--apt1);"></div>Olbe</div>
+          <div class="legend-item"><div class="legend-dot" style="background:var(--apt2);"></div>Poch</div>
+        </div>
+        <div class="m-bar-chart" id="m-bar-chart"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Prossime prenotazioni</div>
+        <div id="m-upcoming-list"><div class="loading">Caricamento...</div></div>
+      </div>
+      <div class="card"><div class="card-title">Apt. Olbe <span class="badge badge-apt1">Apt 1</span> <span id="m-apt1-year-label" style="font-size:11px;color:var(--text-ter);font-weight:400;"></span></div><div id="m-apt1-stats"></div></div>
+      <div class="card"><div class="card-title">Apt. Poch <span class="badge badge-apt2">Apt 2</span> <span id="m-apt2-year-label" style="font-size:11px;color:var(--text-ter);font-weight:400;"></span></div><div id="m-apt2-stats"></div></div>
+    </div>
+
+    <!-- CALENDARIO -->
+    <div id="tab-calendario" class="m-section">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <select class="filter-select" id="m-cal-month-select" onchange="setCalMonth(this.value)" style="flex:1;font-weight:600;font-size:13px;"></select>
+        <select class="filter-select" id="m-cal-year-select" onchange="setCalYear(this.value)" style="width:84px;font-weight:600;font-size:13px;"></select>
+      </div>
+      <div class="cal-legend" style="margin-bottom:12px;flex-wrap:nowrap;overflow-x:auto;">
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--apt1-cal-dot);"></div>Olbe</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--apt2-cal-dot);"></div>Poch</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--airbnb-dot);"></div>Airbnb</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--booking-dot);"></div>Booking</div>
+        <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--manual-dot);"></div>Manuale</div>
+      </div>
+      <div class="apt-tabs">
+        <button class="apt-tab active-apt1" id="m-aptab1" onclick="setApt(1)">Olbe</button>
+        <button class="apt-tab" id="m-aptab2" onclick="setApt(2)">Poch</button>
+        <button class="apt-tab" id="m-aptab0" onclick="setApt(0)">Entrambi</button>
+      </div>
+      <div class="card" style="padding:8px;"><div class="m-cal-grid" id="m-cal-grid"></div></div>
+    </div>
+
+    <!-- PRENOTAZIONI -->
+    <div id="tab-prenotazioni" class="m-section">
+      <div style="display:flex;gap:8px;margin-bottom:10px;">
+        <select class="filter-select" id="m-filter-apt" onchange="bookingsPage=1;renderBookings()" style="flex:1;">
+          <option value="all">Tutti gli apt.</option>
+          <option value="1">Olbe</option>
+          <option value="2">Poch</option>
+        </select>
+        <select class="filter-select" id="m-filter-src" onchange="bookingsPage=1;renderBookings()" style="flex:1;">
+          <option value="all">Tutte le fonti</option>
+          <option value="airbnb">Airbnb</option>
+          <option value="booking">Booking</option>
+          <option value="manual">Manuale</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-bottom:12px;" onclick="openModal()">+ Aggiungi prenotazione</button>
+      <div class="card" style="padding:2px 14px;"><div id="m-bookings-list"><div class="loading">Caricamento...</div></div></div>
+    </div>
+
+    <!-- PREZZI -->
+    <div id="tab-prezzi" class="m-section">
+      <div class="card"><div class="card-title">Olbe <span class="badge badge-apt1">Apt 1</span></div><div id="m-prices-apt1"></div></div>
+      <div class="card"><div class="card-title">Poch <span class="badge badge-apt2">Apt 2</span></div><div id="m-prices-apt2"></div></div>
+      <div class="card">
+        <div class="card-title">Tariffe extra</div>
+        <div class="price-row"><span>Pulizie</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="m-price-cleaning" value="60" min="0"><span class="price-unit">€/sogg.</span></div></div>
+        <div class="price-row"><span>Caparra</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="m-price-deposit" value="200" min="0"><span class="price-unit">€</span></div></div>
+      </div>
+      <button class="btn btn-primary" style="width:100%;" onclick="savePrices()">Salva tutte le tariffe</button>
+    </div>
+
+  </div>
+
+  <!-- BOTTOM NAV -->
+  <div class="m-bottom-nav">
+    <button class="m-nav-btn active" id="m-nav-dashboard" onclick="showTab('dashboard')">
+      <span class="m-nav-icon m-nav-icon-grid"><i></i><i></i><i></i><i></i></span>
+      <span class="m-nav-label">Dashboard</span>
+    </button>
+    <button class="m-nav-btn" id="m-nav-calendario" onclick="showTab('calendario')">
+      <span class="m-nav-icon m-nav-icon-cal"><i></i></span>
+      <span class="m-nav-label">Calendario</span>
+    </button>
+    <button class="m-nav-btn" id="m-nav-prenotazioni" onclick="showTab('prenotazioni')">
+      <span class="m-nav-icon m-nav-icon-list"><i></i><i></i><i></i></span>
+      <span class="m-nav-label">Prenotazioni</span>
+    </button>
+    <button class="m-nav-btn" id="m-nav-prezzi" onclick="showTab('prezzi')">
+      <span class="m-nav-icon m-nav-icon-coin">€</span>
+      <span class="m-nav-label">Prezzi</span>
+    </button>
+  </div>
+</div>
+
+<!-- BOOKING MODAL (bottom sheet) -->
+<div class="m-sheet-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
+  <div class="m-sheet" onclick="event.stopPropagation()">
+    <div class="modal-title" id="modal-title">Nuova prenotazione</div>
+    <div class="form-row"><label class="form-label">Appartamento *</label>
+      <select class="form-input" id="m-apt" required><option value="">Seleziona...</option><option value="1">Olbe (Apt 1)</option><option value="2">Poch (Apt 2)</option></select></div>
+    <div class="form-row"><label class="form-label">Nome ospite *</label><input class="form-input" id="m-guest" list="customer-names-list" placeholder="Nome e cognome" autocomplete="off"></div>
+    <div class="form-row-2">
+      <div><label class="form-label">Check-in *</label><input class="form-input" id="m-checkin" type="date"></div>
+      <div><label class="form-label">Check-out *</label><input class="form-input" id="m-checkout" type="date"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label class="form-label">Importo totale (€)</label><input class="form-input" id="m-amount" type="number" placeholder="0" min="0"></div>
+      <div><label class="form-label">Fonte</label>
+        <select class="form-input" id="m-source"><option value="manual">Manuale</option><option value="airbnb">Airbnb</option><option value="booking">Booking</option></select></div>
+    </div>
+    <div class="form-row"><label class="form-label">Numero ospiti</label><input class="form-input" id="m-guests-num" type="number" placeholder="2" min="1"></div>
+    <div class="form-row"><label class="form-label">Note</label><textarea class="form-input" id="m-notes" placeholder="Richieste speciali, animali, ecc." rows="3" style="resize:vertical;"></textarea></div>
+    <div class="form-actions">
+      <button class="btn btn-sm" onclick="closeModal()">Annulla</button>
+      <button class="btn btn-primary btn-sm" onclick="saveBooking()">Salva</button>
+    </div>
+  </div>
+</div>
+
+<!-- DAY BOOKINGS (bottom sheet) -->
+<div class="m-sheet-overlay" id="day-popup-overlay" onclick="if(event.target===this)closeDayPopup()">
+  <div class="m-sheet" onclick="event.stopPropagation()">
+    <div class="cal-popup-header">
+      <div class="cal-popup-title" id="day-popup-date">—</div>
+      <button class="cal-popup-close" onclick="closeDayPopup()">✕</button>
+    </div>
+    <div id="day-popup-bookings"></div>
+  </div>
+</div>
+
+<datalist id="customer-names-list"></datalist>
+
+<div class="toast" id="toast"></div>
+
+<script type="module" src="mobile.js"></script>
+</body>
+</html>

@@ -1,21 +1,10 @@
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, collection, getDocs, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import {
+  signInWithGoogle as coreSignInWithGoogle, signOutUser, watchAuth,
+  subscribeBookings as coreSubscribeBookings, subscribeCustomers as coreSubscribeCustomers,
+  saveBookingDoc, deleteBookingDoc,
+  loadSettingsDoc, saveSettingsDoc, runCustomerBackfillIfNeeded,
+} from './firebase-core.js';
 
-const firebaseConfig = {
-  apiKey: "AIzaSyAbCejZ27wKUl2aNlZnqHMe1QqeLohKBzk",
-  authDomain: "apt-veslar.firebaseapp.com",
-  projectId: "apt-veslar",
-  storageBucket: "apt-veslar.firebasestorage.app",
-  messagingSenderId: "315440513290",
-  appId: "1:315440513290:web:04159ab6afe148cb97baf3"
-};
-
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-
-let currentUser = null;
 let bookings = [];
 let prices = { 1:{base:120,weekend:160,high:200,low:90}, 2:{base:100,weekend:140,high:170,low:80} };
 let extras = { cleaning:60, deposit:200 };
@@ -23,9 +12,6 @@ let ical = { 'airbnb-1':'','airbnb-2':'','booking-1':'','booking-2':'' };
 let unsubBookings = null;
 let customers = [];
 let unsubCustomers = null;
-let customersLoaded = false;
-let bookingsLoadedOnce = false;
-let backfillRan = false;
 
 const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
 const dayNames = ['Lun','Mar','Mer','Gio','Ven','Sab','Dom'];
@@ -38,8 +24,7 @@ let editingId = null;
 // ---- AUTH ----
 window.signInWithGoogle = async () => {
   try {
-    const provider = new GoogleAuthProvider();
-    await signInWithPopup(auth, provider);
+    await coreSignInWithGoogle();
   } catch(e) {
     const el = document.getElementById('login-error');
     el.style.display = 'block';
@@ -50,64 +35,49 @@ window.signInWithGoogle = async () => {
 window.signOut = async () => {
   if(unsubBookings) unsubBookings();
   if(unsubCustomers) unsubCustomers();
-  await fbSignOut(auth);
+  await signOutUser();
 };
 
-onAuthStateChanged(auth, async (user) => {
-  if(user) {
-    currentUser = user;
-    document.getElementById('login-screen').style.display = 'none';
-    document.getElementById('app-screen').style.display = 'block';
-    document.getElementById('user-name-label').textContent = user.displayName?.split(' ')[0] || '';
-    const avatarWrap = document.getElementById('user-avatar-wrap');
-    if(user.photoURL) {
-      avatarWrap.innerHTML = `<img src="${user.photoURL}" class="user-avatar" alt="">`;
-    } else {
-      const initials = (user.displayName||'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
-      avatarWrap.innerHTML = `<div class="user-avatar-fallback">${initials}</div>`;
-    }
-    customersLoaded = false;
-    bookingsLoadedOnce = false;
-    backfillRan = false;
-    await loadSettings();
-    subscribeBookings();
-    subscribeCustomers();
-    renderDashboard();
-    renderPrices();
-    // Sync theme button icon with saved preference
-    try {
-      const saved = localStorage.getItem('apt_theme');
-      document.getElementById('theme-btn').textContent = saved === 'dark' ? '🌙' : '☀️';
-    } catch(e){}
+watchAuth(async (user) => {
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app-screen').style.display = 'block';
+  document.getElementById('user-name-label').textContent = user.displayName?.split(' ')[0] || '';
+  const avatarWrap = document.getElementById('user-avatar-wrap');
+  if(user.photoURL) {
+    avatarWrap.innerHTML = `<img src="${user.photoURL}" class="user-avatar" alt="">`;
   } else {
-    currentUser = null;
-    document.getElementById('login-screen').style.display = 'flex';
-    document.getElementById('app-screen').style.display = 'none';
+    const initials = (user.displayName||'U').split(' ').map(n=>n[0]).join('').substring(0,2).toUpperCase();
+    avatarWrap.innerHTML = `<div class="user-avatar-fallback">${initials}</div>`;
   }
+  await loadSettings();
+  subscribeBookings();
+  subscribeCustomers();
+  renderDashboard();
+  renderPrices();
+  // Sync theme button icon with saved preference
+  try {
+    const saved = localStorage.getItem('apt_theme');
+    document.getElementById('theme-btn').textContent = saved === 'dark' ? '🌙' : '☀️';
+  } catch(e){}
+}, () => {
+  document.getElementById('login-screen').style.display = 'flex';
+  document.getElementById('app-screen').style.display = 'none';
 });
-
-// ---- FIRESTORE PATHS ----
-function userDoc(path) { return doc(db, 'users', currentUser.uid, ...path.split('/')); }
-function bookingsCol() { return collection(db, 'users', currentUser.uid, 'bookings'); }
-function customersCol() { return collection(db, 'users', currentUser.uid, 'customers'); }
 
 // ---- LOAD SETTINGS ----
 async function loadSettings() {
-  try {
-    const snap = await getDoc(userDoc('settings/main'));
-    if(snap.exists()) {
-      const d = snap.data();
-      if(d.prices) prices = d.prices;
-      if(d.extras) extras = d.extras;
-      if(d.ical) ical = d.ical;
-    }
-  } catch(e) { console.error('loadSettings', e); }
+  const d = await loadSettingsDoc();
+  if(d) {
+    if(d.prices) prices = d.prices;
+    if(d.extras) extras = d.extras;
+    if(d.ical) ical = d.ical;
+  }
 }
 
 async function saveSettings() {
   showSaving(true);
   try {
-    await setDoc(userDoc('settings/main'), { prices, extras, ical });
+    await saveSettingsDoc({ prices, extras, ical });
   } catch(e) { toast('Errore nel salvataggio'); }
   showSaving(false);
 }
@@ -115,71 +85,31 @@ async function saveSettings() {
 // ---- BOOKINGS REALTIME ----
 function subscribeBookings() {
   if(unsubBookings) unsubBookings();
-  const q = query(bookingsCol(), orderBy('checkin','desc'));
-  unsubBookings = onSnapshot(q, (snap) => {
-    bookings = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    bookingsLoadedOnce = true;
+  unsubBookings = coreSubscribeBookings((arr) => {
+    bookings = arr;
     renderDashboard();
     renderBookings();
     renderCustomers();
     if(document.getElementById('tab-calendario').classList.contains('active')) renderCalendar();
-    maybeRunCustomerBackfill();
-  }, (e) => { console.error('snapshot error', e); });
+    runCustomerBackfillIfNeeded({
+      onStart: () => showSaving(true),
+      onDone: (linked) => { showSaving(false); if(linked) toast(`Collegati ${linked} ospiti storici ai profili clienti`); },
+    });
+  });
 }
 
 // ---- CUSTOMERS REALTIME ----
 function subscribeCustomers() {
   if(unsubCustomers) unsubCustomers();
-  const q = query(customersCol(), orderBy('name'));
-  unsubCustomers = onSnapshot(q, (snap) => {
-    customers = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    customersLoaded = true;
+  unsubCustomers = coreSubscribeCustomers((arr) => {
+    customers = arr;
     renderCustomerDatalist();
     renderCustomers();
-    maybeRunCustomerBackfill();
-  }, (e) => { console.error('customers snapshot error', e); });
-}
-
-function normalizeNameKey(name) {
-  return (name||'').trim().replace(/\s+/g,' ').toLowerCase();
-}
-
-// Finds a customer by (normalized) name, creating one if none exists yet.
-// Pushes newly created customers into the local `customers` array immediately,
-// so back-to-back calls for the same name (e.g. in a loop) don't race the
-// onSnapshot round-trip and create duplicates.
-async function findOrCreateCustomerByName(name) {
-  const trimmed = (name||'').trim();
-  const key = normalizeNameKey(trimmed);
-  if(!key) return null;
-  const existing = customers.find(c => c.nameKey === key);
-  if(existing) return existing.id;
-  const docRef = await addDoc(customersCol(), { name: trimmed, nameKey: key, createdAt: new Date().toISOString() });
-  customers.push({ id: docRef.id, name: trimmed, nameKey: key });
-  return docRef.id;
-}
-
-// One-time, idempotent pass linking legacy bookings (saved before the
-// customers feature existed) to a customer record, matched by guest name.
-// No-ops instantly once every booking has a customerId.
-async function maybeRunCustomerBackfill() {
-  if(backfillRan || !customersLoaded || !bookingsLoadedOnce) return;
-  backfillRan = true;
-  const toLink = bookings.filter(b => !b.customerId && b.guest);
-  if(!toLink.length) return;
-  showSaving(true);
-  let linked = 0;
-  for(const b of toLink) {
-    try {
-      const customerId = await findOrCreateCustomerByName(b.guest);
-      if(customerId) {
-        await setDoc(doc(db,'users',currentUser.uid,'bookings',b.id), { customerId }, { merge: true });
-        linked++;
-      }
-    } catch(e) { console.error('backfill link error', e); }
-  }
-  showSaving(false);
-  if(linked) toast(`Collegati ${linked} ospiti storici ai profili clienti`);
+    runCustomerBackfillIfNeeded({
+      onStart: () => showSaving(true),
+      onDone: (linked) => { showSaving(false); if(linked) toast(`Collegati ${linked} ospiti storici ai profili clienti`); },
+    });
+  });
 }
 
 function renderCustomerDatalist(){
@@ -531,21 +461,15 @@ window.saveBooking=async function(){
   if(new Date(checkout)<=new Date(checkin)){alert('Il check-out deve essere dopo il check-in.');return;}
   showSaving(true);
   try {
-    const customerId = await findOrCreateCustomerByName(guest);
     const data = {
       apt:parseInt(aptVal),
-      guest, checkin, checkout, amount, customerId,
+      guest, checkin, checkout, amount,
       source:document.getElementById('m-source').value,
       notes:document.getElementById('m-notes').value,
       guestsNum:parseInt(document.getElementById('m-guests-num').value)||0,
     };
-    if(editingId) {
-      await setDoc(doc(db,'users',currentUser.uid,'bookings',editingId), {...data, updatedAt: new Date().toISOString()}, {merge:true});
-      toast('Prenotazione aggiornata!');
-    } else {
-      await addDoc(bookingsCol(), {...data, createdAt: new Date().toISOString()});
-      toast('Prenotazione salvata!');
-    }
+    await saveBookingDoc(data, editingId);
+    toast(editingId ? 'Prenotazione aggiornata!' : 'Prenotazione salvata!');
     closeModal();
   } catch(e){ toast('Errore: '+e.message); }
   showSaving(false);
@@ -555,7 +479,7 @@ window.deleteBooking=async function(id){
   if(!confirm('Eliminare questa prenotazione?')) return;
   showSaving(true);
   try {
-    await deleteDoc(doc(db,'users',currentUser.uid,'bookings',id));
+    await deleteBookingDoc(id);
     toast('Prenotazione eliminata');
   } catch(e){ toast('Errore: '+e.message); }
   showSaving(false);
@@ -811,8 +735,7 @@ window.confirmImport = async function(){
   for(const r of importRows){
     try {
       const {_unit, ...data} = r;
-      const customerId = await findOrCreateCustomerByName(data.guest);
-      await addDoc(bookingsCol(), {...data, customerId, createdAt: new Date().toISOString()});
+      await saveBookingDoc(data, null);
       ok++;
     } catch(e){ fail++; console.error(e); }
   }

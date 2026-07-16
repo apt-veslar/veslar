@@ -1,0 +1,70 @@
+/* Mobile shell — reuses styles.css tokens (--bg, --text, --apt1/2, --apt1-cal-*, etc.)
+   and component classes (.card, .badge*, .form-*, .btn*, .price-row, .apt-tab*,
+   .empty, .loading, .toast, .login-*, .booking-row). Only new structure lives here. */
+
+html, body { height: 100%; }
+
+#app-screen { display: none; flex-direction: column; height: 100vh; height: 100dvh; }
+
+.m-header { background: var(--bg); border-bottom: 0.5px solid var(--border); padding: 10px 16px 12px; padding-top: calc(10px + env(safe-area-inset-top)); display: flex; align-items: flex-start; justify-content: space-between; flex-shrink: 0; }
+.m-header-title { font-size: 17px; font-weight: 700; color: var(--text); }
+.m-header-sub { font-size: 11px; color: var(--text-sec); margin-top: 2px; }
+
+.m-content { flex: 1; overflow-y: auto; padding: 14px 14px 20px; -webkit-overflow-scrolling: touch; }
+.m-section { display: none; }
+.m-section.active { display: block; }
+
+.m-content .card { padding: 14px; margin-bottom: 12px; }
+.m-content .metric { padding: 12px; }
+.m-content .grid2 { gap: 10px; margin-bottom: 12px; }
+
+/* ---- DASHBOARD BAR CHART (horizontally scrollable, fixed-width bars) ---- */
+.m-bar-chart { display: flex; align-items: flex-end; gap: 5px; height: 110px; overflow-x: auto; padding-bottom: 2px; }
+.m-bar-month { display: flex; flex-direction: column; align-items: center; flex-shrink: 0; width: 24px; }
+.m-bar-pair { display: flex; gap: 2px; align-items: flex-end; height: 80px; }
+.m-bar { width: 9px; border-radius: 2px 2px 0 0; min-height: 3px; }
+.m-bar-label { font-size: 9px; color: var(--text-ter); margin-top: 3px; }
+
+/* ---- CALENDAR: day cell background = apartment, dots = source ---- */
+.m-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+.m-cal-day-name { text-align: center; font-size: 9px; color: var(--text-ter); padding: 4px 0; font-weight: 600; }
+.m-cal-day { min-height: 44px; border-radius: 6px; border: 0.5px solid var(--border); padding: 3px; cursor: default; background: var(--bg); display: flex; flex-direction: column; align-items: center; }
+.m-cal-day.cal-apt1, .m-cal-day.cal-apt2 { cursor: pointer; }
+.m-cal-day.other-month { opacity: 0.35; background: var(--bg-sec); cursor: default; }
+.m-cal-day.today { border: 1.5px solid var(--text); }
+.m-cal-day.cal-apt1 { background: var(--apt1-cal-bg); }
+.m-cal-day.cal-apt2 { background: var(--apt2-cal-bg); }
+.m-cal-day-num { font-size: 11px; color: var(--text-sec); font-weight: 500; }
+.m-cal-dots { display: flex; gap: 2px; margin-top: 2px; flex-wrap: wrap; justify-content: center; }
+.m-cal-dot { width: 5px; height: 5px; border-radius: 50%; }
+
+/* ---- BOTTOM NAV ---- */
+.m-bottom-nav { background: var(--bg); border-top: 0.5px solid var(--border); display: flex; flex-shrink: 0; padding: 6px 4px calc(2px + env(safe-area-inset-bottom)); }
+.m-nav-btn { flex: 1; background: none; border: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 0; color: var(--text-ter); font-weight: 500; }
+.m-nav-btn.active { color: var(--text); font-weight: 700; }
+.m-nav-label { font-size: 10px; }
+
+.m-nav-icon { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.m-nav-icon-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.m-nav-icon-grid i { background: currentColor; border-radius: 2px; display: block; }
+.m-nav-icon-cal i { width: 16px; height: 16px; border: 1.6px solid currentColor; border-radius: 3px; position: relative; display: block; }
+.m-nav-icon-cal i::after { content: ''; position: absolute; top: 3px; left: 0; right: 0; height: 1.6px; background: currentColor; }
+.m-nav-icon-list { flex-direction: column; gap: 3px; width: 16px; justify-content: center; }
+.m-nav-icon-list i { height: 2px; background: currentColor; border-radius: 1px; width: 100%; display: block; }
+.m-nav-icon-list i:nth-child(2) { width: 70%; }
+.m-nav-icon-coin { width: 16px; height: 16px; border-radius: 50%; border: 1.6px solid currentColor; font-size: 10px; font-weight: 700; line-height: 1; color: currentColor; }
+
+/* ---- STACKED BOOKING ROW (Prenotazioni list, day-popup list) ---- */
+.m-booking-row { padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.m-booking-row:last-child { border-bottom: none; }
+.m-booking-top { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 5px; }
+.m-booking-mid { display: flex; justify-content: space-between; align-items: center; }
+.m-booking-actions { display: flex; gap: 8px; margin-top: 6px; }
+
+/* ---- BOTTOM SHEETS (booking modal, day popup) ---- */
+.m-sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-end; justify-content: center; }
+.m-sheet-overlay.open { display: flex; }
+.m-sheet { background: var(--bg); border-radius: 16px 16px 0 0; padding: 18px 18px calc(24px + env(safe-area-inset-bottom)); width: 100%; max-height: 80%; overflow-y: auto; box-sizing: border-box; }
+
+/* ---- TOAST: bottom-center, above the nav bar ---- */
+.toast { left: 50%; right: auto; bottom: calc(70px + env(safe-area-inset-bottom)); transform: translateX(-50%); }
