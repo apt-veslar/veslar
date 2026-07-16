@@ -398,7 +398,7 @@ window.openCalPopup=function(bookingId){
   document.getElementById('cal-popup-overlay').classList.add('open');
 };
 window.closeCalPopup=function(){document.getElementById('cal-popup-overlay').classList.remove('open');calPopupBookingId=null;};
-window.editFromCalPopup=function(){closeCalPopup();if(calPopupBookingId)editBooking(calPopupBookingId);};
+window.editFromCalPopup=function(){const id=calPopupBookingId;closeCalPopup();if(id)editBooking(id);};
 
 function renderCalendar(){
   populateCalDropdowns();
@@ -415,8 +415,9 @@ function renderCalendar(){
     const aptFilter = currentApt===0 ? [1,2] : [currentApt];
     const dayBooks=bookings.filter(b=>aptFilter.includes(b.apt)&&ds>=b.checkin&&ds<b.checkout);
     const bHtml=dayBooks.map(b=>{
-      const aptDot = currentApt===0 ? `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${b.apt===1?'var(--apt1)':'var(--apt2)'};margin-right:3px;vertical-align:middle;"></span>` : '';
-      return `<div class="cal-booking ${b.source}" onclick="event.stopPropagation();openCalPopup('${b.id}')" style="cursor:pointer;">${aptDot}${b.guest.split(' ')[0]}</div>`;
+      const srcDotColor = b.source==='airbnb' ? 'var(--airbnb-dot)' : b.source==='booking' ? 'var(--booking-dot)' : 'var(--manual-dot)';
+      const srcDot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${srcDotColor};margin-right:3px;vertical-align:middle;"></span>`;
+      return `<div class="cal-booking cal-apt${b.apt}" onclick="event.stopPropagation();openCalPopup('${b.id}')" style="cursor:pointer;">${srcDot}${b.guest.split(' ')[0]}</div>`;
     }).join('');
     html+=`<div class="cal-day${isToday?' today':''}${dayBooks.length?' occupied':''}"><div class="cal-day-num">${d}</div>${bHtml}</div>`;
   }
