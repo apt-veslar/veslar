@@ -45,7 +45,7 @@ html, body { height: 100%; }
 .m-nav-label { font-size: 10px; }
 
 .m-nav-icon { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
-.m-nav-icon-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; }
+.m-nav-icon-grid { display: grid; grid-template-columns: 7px 7px; grid-template-rows: 7px 7px; gap: 2px; }
 .m-nav-icon-grid i { background: currentColor; border-radius: 2px; display: block; }
 .m-nav-icon-cal i { width: 16px; height: 16px; border: 1.6px solid currentColor; border-radius: 3px; position: relative; display: block; }
 .m-nav-icon-cal i::after { content: ''; position: absolute; top: 3px; left: 0; right: 0; height: 1.6px; background: currentColor; }
@@ -53,8 +53,11 @@ html, body { height: 100%; }
 .m-nav-icon-list i { height: 2px; background: currentColor; border-radius: 1px; width: 100%; display: block; }
 .m-nav-icon-list i:nth-child(2) { width: 70%; }
 .m-nav-icon-coin { width: 16px; height: 16px; border-radius: 50%; border: 1.6px solid currentColor; font-size: 10px; font-weight: 700; line-height: 1; color: currentColor; }
-.m-nav-icon-calc { width: 16px; height: 16px; border: 1.6px solid currentColor; border-radius: 3px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; padding: 2.5px; box-sizing: border-box; }
-.m-nav-icon-calc i { background: currentColor; border-radius: 50%; display: block; }
+/* Calculator body: rounded rect with a screen bar + a 2x2 keypad, drawn from
+   a single element via ::before (screen) and ::after + box-shadow (4 keys). */
+.m-nav-icon-calc i { width: 13px; height: 16px; border: 1.6px solid currentColor; border-radius: 2.5px; position: relative; display: block; box-sizing: border-box; }
+.m-nav-icon-calc i::before { content: ''; position: absolute; top: 2px; left: 2px; right: 2px; height: 3px; background: currentColor; border-radius: 0.5px; }
+.m-nav-icon-calc i::after { content: ''; position: absolute; top: 7px; left: 2.5px; width: 2px; height: 2px; background: currentColor; border-radius: 0.5px; box-shadow: 5px 0 0 currentColor, 0 4px 0 currentColor, 5px 4px 0 currentColor; }
 
 /* ---- STACKED BOOKING ROW (Prenotazioni list, day-popup list) ---- */
 .m-booking-row { padding: 10px 0; border-bottom: 0.5px solid var(--border); }
