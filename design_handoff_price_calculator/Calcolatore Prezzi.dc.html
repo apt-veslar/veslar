@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+
+<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;font-size:15px;color:#1a1a18;background:#eeede9;min-height:100vh;padding:0">
+
+  <div style="background:#ffffff;border-bottom:0.5px solid rgba(0,0,0,0.12);padding:0.85rem 1.5rem;display:flex;align-items:center;justify-content:space-between">
+    <div>
+      <div style="font-size:17px;font-weight:700">🏔️ Gestione Appartamenti</div>
+      <div style="font-size:12px;color:#666660;margin-top:1px">Montagna · 2 proprietà</div>
+    </div>
+  </div>
+
+  <div style="max-width:960px;margin:0 auto;padding:1.5rem">
+
+    <div style="display:flex;gap:2px;background:#f5f5f3;border-radius:8px;padding:3px;margin-bottom:1.5rem;overflow-x:auto">
+      <div style="padding:7px 16px;font-size:13px;font-weight:500;color:#666660;border-radius:6px;white-space:nowrap">Dashboard</div>
+      <div style="padding:7px 16px;font-size:13px;font-weight:500;color:#666660;border-radius:6px;white-space:nowrap">Calendario</div>
+      <div style="padding:7px 16px;font-size:13px;font-weight:500;color:#666660;border-radius:6px;white-space:nowrap">Prenotazioni</div>
+      <div style="padding:7px 16px;font-size:13px;font-weight:500;color:#666660;border-radius:6px;white-space:nowrap">Clienti</div>
+      <div style="padding:7px 16px;font-size:13px;font-weight:500;color:#666660;border-radius:6px;white-space:nowrap">Prezzi</div>
+      <div style="padding:7px 16px;font-size:13px;font-weight:600;color:#1a1a18;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.1);border-radius:6px;white-space:nowrap">Calcolatore</div>
+      <div style="padding:7px 16px;font-size:13px;font-weight:500;color:#666660;border-radius:6px;white-space:nowrap">Sincronizzazione</div>
+      <div style="padding:7px 16px;font-size:13px;font-weight:500;color:#666660;border-radius:6px;white-space:nowrap">Backup</div>
+    </div>
+
+    <div style="display:flex;gap:8px;margin-bottom:1rem">
+      <sc-for list="{{ aptOptions }}" as="opt" hint-placeholder-count="2">
+        <button onclick="{{ opt.onClick }}" style="padding:6px 16px;font-size:13px;cursor:pointer;border-radius:20px;font-weight:500;white-space:nowrap;{{ opt.style }}">{{ opt.label }}</button>
+      </sc-for>
+    </div>
+
+    <div style="background:#ffffff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
+      <div style="font-size:14px;font-weight:600;margin-bottom:1rem">Date e ospiti</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:12px">
+        <div>
+          <label style="font-size:12px;color:#666660;font-weight:500;margin-bottom:4px;display:block">Check-in</label>
+          <input type="date" value="{{ checkin }}" onchange="{{ setCheckin }}" style="width:100%;box-sizing:border-box;padding:8px 10px;border:0.5px solid rgba(0,0,0,0.22);border-radius:8px;font-size:14px;background:#ffffff;color:#1a1a18">
+        </div>
+        <div>
+          <label style="font-size:12px;color:#666660;font-weight:500;margin-bottom:4px;display:block">Check-out</label>
+          <input type="date" value="{{ checkout }}" onchange="{{ setCheckout }}" style="width:100%;box-sizing:border-box;padding:8px 10px;border:0.5px solid rgba(0,0,0,0.22);border-radius:8px;font-size:14px;background:#ffffff;color:#1a1a18">
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div>
+          <label style="font-size:12px;color:#666660;font-weight:500;margin-bottom:4px;display:block">Adulti</label>
+          <input type="number" min="0" value="{{ adults }}" onchange="{{ setAdults }}" style="width:100%;box-sizing:border-box;padding:8px 10px;border:0.5px solid rgba(0,0,0,0.22);border-radius:8px;font-size:14px;background:#ffffff;color:#1a1a18">
+        </div>
+        <div>
+          <label style="font-size:12px;color:#666660;font-weight:500;margin-bottom:4px;display:block">Bambini</label>
+          <input type="number" min="0" value="{{ children }}" onchange="{{ setChildren }}" style="width:100%;box-sizing:border-box;padding:8px 10px;border:0.5px solid rgba(0,0,0,0.22);border-radius:8px;font-size:14px;background:#ffffff;color:#1a1a18">
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#ffffff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
+      <div style="font-size:14px;font-weight:600;margin-bottom:1rem">Extra</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.12);font-size:13px;gap:8px;flex-wrap:wrap">
+        <span>Sconto sull'affitto</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <input type="number" min="0" value="{{ discount }}" onchange="{{ setDiscount }}" style="width:90px;padding:6px 8px;border:0.5px solid rgba(0,0,0,0.22);border-radius:8px;font-size:13px;text-align:right;background:#ffffff;color:#1a1a18">
+          <span style="font-size:11px;color:#999992">€</span>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.12);font-size:13px;gap:8px;flex-wrap:wrap">
+        <span>Pulizie</span>
+        <div style="display:flex;gap:6px">
+          <sc-for list="{{ cleaningOptions }}" as="opt" hint-placeholder-count="3">
+            <button onclick="{{ opt.onClick }}" style="padding:6px 14px;font-size:13px;font-weight:500;border-radius:8px;cursor:pointer;{{ opt.style }}">{{ opt.label }}</button>
+          </sc-for>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:13px;gap:8px">
+        <div>
+          <div>Lenzuola e asciugamani</div>
+          <div style="font-size:11px;color:#999992;margin-top:2px">Opzionale · €10 a persona, una tantum</div>
+        </div>
+        <button onclick="{{ toggleLinens }}" style="width:44px;height:26px;border-radius:14px;border:none;cursor:pointer;position:relative;flex-shrink:0;{{ linensToggleStyle }}">
+          <span style="position:absolute;top:2px;width:22px;height:22px;border-radius:50%;background:#ffffff;transition:left 0.15s;box-shadow:0 1px 2px rgba(0,0,0,0.25);{{ linensKnobStyle }}"></span>
+        </button>
+      </div>
+    </div>
+
+    <div style="background:#ffffff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
+      <div style="font-size:14px;font-weight:600;margin-bottom:1rem">Preventivo · <span style="font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;{{ aptBadgeStyle }}">{{ aptLabel }}</span></div>
+
+      <sc-if value="{{ valid }}" hint-placeholder-val="{{ true }}">
+        <div style="font-size:12px;color:#666660;margin-bottom:10px">{{ nightsCount }} notti · {{ checkinFmt }} → {{ checkoutFmt }}</div>
+
+        <sc-for list="{{ groupsView }}" as="g" hint-placeholder-count="1">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.12);font-size:13px;gap:8px">
+            <span>Affitto — {{ g.label }} ({{ g.count }} notti, {{ g.perNight }}/notte)</span>
+            <strong>{{ g.total }}</strong>
+          </div>
+        </sc-for>
+
+        <sc-if value="{{ hasDiscount }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.12);font-size:13px;gap:8px">
+            <span>Sconto</span>
+            <strong style="color:#A32D2D">−{{ discountFmt }}</strong>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.12);font-size:13px;gap:8px">
+          <span>Pulizie</span>
+          <strong>{{ cleaningFmt }}</strong>
+        </div>
+
+        <sc-if value="{{ hasLinens }}" hint-placeholder-val="{{ false }}">
+          <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.12);font-size:13px;gap:8px">
+            <span>Lenzuola e asciugamani</span>
+            <strong>{{ linensCostFmt }}</strong>
+          </div>
+        </sc-if>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.12);font-size:13px;gap:8px">
+          <span>Tassa di soggiorno ({{ adultsForTax }} adulti × {{ taxNights }} giorni)</span>
+          <strong>{{ taxFmt }}</strong>
+        </div>
+
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 0 4px;font-size:16px">
+          <span style="font-weight:700">Totale</span>
+          <span style="font-weight:700;font-size:20px">{{ totalFmt }}</span>
+        </div>
+
+        <div style="margin-top:1rem;text-align:right">
+          <button onclick="{{ copySummary }}" style="padding:7px 16px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:0.5px solid #1a1a18;white-space:nowrap;{{ copyButtonStyle }}">{{ copyButtonLabel }}</button>
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ invalid }}" hint-placeholder-val="{{ false }}">
+        <div style="color:#999992;font-size:13px;padding:1.5rem 0;text-align:center">Seleziona un check-out successivo al check-in.</div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ valid }}" hint-placeholder-val="{{ true }}">
+      <div style="background:#ffffff;border:0.5px solid rgba(0,0,0,0.12);border-radius:12px;padding:1rem 1.25rem;margin-bottom:1rem">
+        <div style="font-size:14px;font-weight:600;margin-bottom:1rem">Piattaforme di prenotazione</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.12);font-size:13px;gap:8px">
+          <span>Totale diretto</span>
+          <strong>{{ totalFmt }}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;border-bottom:0.5px solid rgba(0,0,0,0.12);font-size:13px;gap:8px">
+          <span>Netto host (Airbnb, −3%)</span>
+          <strong>{{ airbnbNetFmt }}</strong>
+        </div>
+        <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 0;font-size:13px;gap:8px">
+          <span>Totale pagato ospite (Airbnb, +15%)</span>
+          <strong>{{ airbnbGuestFmt }}</strong>
+        </div>
+      </div>
+    </sc-if>
+
+  </div>
+</div>
+
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+
+class Component extends DCLogic {
+  state = (() => {
+    const t = new Date(); const iso = d => d.toISOString().split('T')[0];
+    const t2 = new Date(t); t2.setDate(t2.getDate() + 7);
+    return { apt: 1, checkin: iso(t), checkout: iso(t2), adults: 2, children: 0, cleaning: 50, linens: false, discount: 0, copied: false };
+  })();
+
+  seasons = [
+    { key: 'capodanno', label: 'Capodanno', match: (m, d) => (m === 12 && d >= 27) || (m === 1 && d <= 3), rates: { 1: { week: 1750, weekend: 500 }, 2: { week: 1250, weekend: 350 } } },
+    { key: 'natale', label: 'Natale', match: (m, d) => m === 12 && d >= 20 && d <= 26, rates: { 1: { week: 1500, weekend: 430 }, 2: { week: 1000, weekend: 280 } } },
+    { key: 'alta_invernale', label: 'Alta invernale', match: (m) => (m === 2 || m === 3), rates: { 1: { week: 1300, weekend: 420 }, 2: { week: 875, weekend: 300 } } },
+    { key: 'alta_invernale_gen', label: 'Alta invernale', match: (m, d) => m === 1 && d >= 7, rates: { 1: { week: 1300, weekend: 420 }, 2: { week: 875, weekend: 300 } } },
+    { key: 'alta_estiva', label: 'Alta estiva', match: (m) => m === 7 || m === 8, rates: { 1: { week: 1300, weekend: 420 }, 2: { week: 875, weekend: 300 } } },
+    { key: 'bassa', label: 'Bassa/media stagione', match: () => true, rates: { 1: { week: 750, weekend: 250 }, 2: { week: 525, weekend: 180 } } },
+  ];
+
+  getSeasonForDate(date) {
+    const m = date.getMonth() + 1, d = date.getDate();
+    for (const s of this.seasons) if (s.key !== 'bassa' && s.match(m, d)) return s;
+    return this.seasons[this.seasons.length - 1];
+  }
+
+  nightlyRate(date, apt) {
+    const season = this.getSeasonForDate(date);
+    const r = season.rates[apt];
+    const dow = date.getDay();
+    const isWeekendNight = dow === 5 || dow === 6;
+    const rate = isWeekendNight ? r.weekend / 2 : (r.week - r.weekend) / 5;
+    return { season, rate };
+  }
+
+  computeNights() {
+    const { checkin, checkout, apt } = this.state;
+    if (!checkin || !checkout) return [];
+    const start = new Date(checkin + 'T00:00:00');
+    const end = new Date(checkout + 'T00:00:00');
+    if (end <= start) return [];
+    const nights = [];
+    let cur = new Date(start);
+    while (cur < end) {
+      const { season, rate } = this.nightlyRate(cur, apt);
+      nights.push({ date: new Date(cur), season, rate });
+      cur.setDate(cur.getDate() + 1);
+    }
+    return nights;
+  }
+
+  fmtEuro(n) { return '€' + Math.round(n).toLocaleString('it-IT'); }
+
+  fmtDateIt(iso) {
+    const d = new Date(iso + 'T00:00:00');
+    const months = ['gen', 'feb', 'mar', 'apr', 'mag', 'giu', 'lug', 'ago', 'set', 'ott', 'nov', 'dic'];
+    return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear();
+  }
+
+  renderVals() {
+    const nights = this.computeNights();
+    const nightsCount = nights.length;
+    const rent = nights.reduce((s, n) => s + n.rate, 0);
+    const groups = [];
+    nights.forEach(n => {
+      let g = groups.find(g => g.key === n.season.key);
+      if (!g) { g = { key: n.season.key, label: n.season.label, count: 0, total: 0 }; groups.push(g); }
+      g.count++; g.total += n.rate;
+    });
+    const adults = this.state.adults || 0, children = this.state.children || 0;
+    const totalGuests = adults + children;
+    const cleaning = this.state.cleaning;
+    const linensCost = this.state.linens ? 10 * totalGuests : 0;
+    const taxNights = Math.min(nightsCount, 7);
+    const tax = 2 * adults * taxNights;
+    const discount = Math.min(this.state.discount || 0, rent);
+    const total = rent - discount + cleaning + linensCost + tax;
+    const valid = nightsCount > 0;
+    const fmt = n => this.fmtEuro(n);
+
+    const aptColor = this.state.apt === 1 ? '#1D9E75' : '#378ADD';
+    const aptBg = this.state.apt === 1 ? '#E1F5EE' : '#E6F1FB';
+    const aptText = this.state.apt === 1 ? '#0F6E56' : '#185FA5';
+
+    const aptOptions = [
+      { id: 1, label: 'Olbe (Apt 1)', onClick: () => this.setState({ apt: 1 }),
+        style: this.state.apt === 1 ? 'background:#E1F5EE;color:#0F6E56;border:0.5px solid #1D9E75' : 'background:none;color:#666660;border:0.5px solid rgba(0,0,0,0.22)' },
+      { id: 2, label: 'Poch (Apt 2)', onClick: () => this.setState({ apt: 2 }),
+        style: this.state.apt === 2 ? 'background:#E6F1FB;color:#185FA5;border:0.5px solid #378ADD' : 'background:none;color:#666660;border:0.5px solid rgba(0,0,0,0.22)' },
+    ];
+
+    const cleaningOptions = [40, 50, 60].map(v => ({
+      value: v, label: '€' + v,
+      onClick: () => this.setState({ cleaning: v }),
+      style: v === this.state.cleaning ? 'background:#1a1a18;color:#ffffff;border:0.5px solid #1a1a18' : 'background:none;color:#666660;border:0.5px solid rgba(0,0,0,0.22)',
+    }));
+
+    return {
+      aptOptions, cleaningOptions,
+      checkin: this.state.checkin,
+      checkout: this.state.checkout,
+      setCheckin: e => this.setState({ checkin: e.target.value }),
+      setCheckout: e => this.setState({ checkout: e.target.value }),
+      adults: this.state.adults,
+      children: this.state.children,
+      setAdults: e => this.setState({ adults: parseInt(e.target.value) || 0 }),
+      setChildren: e => this.setState({ children: parseInt(e.target.value) || 0 }),
+      toggleLinens: () => this.setState({ linens: !this.state.linens }),
+      linensToggleStyle: this.state.linens ? 'background:#1D9E75' : 'background:rgba(0,0,0,0.22)',
+      linensKnobStyle: this.state.linens ? 'left:20px' : 'left:2px',
+      valid,
+      invalid: !valid,
+      nightsCount,
+      checkinFmt: this.fmtDateIt(this.state.checkin),
+      checkoutFmt: this.fmtDateIt(this.state.checkout),
+      groupsView: groups.map(g => ({ label: g.label, count: g.count, total: fmt(g.total), perNight: fmt(g.total / g.count) })),
+      discount: this.state.discount,
+      setDiscount: e => this.setState({ discount: parseFloat(e.target.value) || 0 }),
+      hasDiscount: discount > 0,
+      discountFmt: fmt(discount),
+      cleaningFmt: fmt(cleaning),
+      linensCostFmt: fmt(linensCost),
+      hasLinens: linensCost > 0,
+      taxFmt: fmt(tax),
+      taxNights,
+      adultsForTax: adults,
+      totalFmt: fmt(total),
+      airbnbNetFmt: fmt(total * 0.97),
+      airbnbGuestFmt: fmt(total * 1.15),
+      aptLabel: this.state.apt === 1 ? 'Olbe' : 'Poch',
+      aptBadgeStyle: `background:${aptBg};color:${aptText}`,
+      copyButtonLabel: this.state.copied ? '✓ Copiato' : 'Copia riepilogo per il cliente',
+      copyButtonStyle: this.state.copied ? 'background:#1D9E75;color:#ffffff' : 'background:#1a1a18;color:#ffffff',
+      copySummary: () => {
+        const aptName = this.state.apt === 1 ? 'Olbe' : 'Poch';
+        const lines = [];
+        lines.push(`Preventivo appartamento ${aptName}`);
+        lines.push(`${this.fmtDateIt(this.state.checkin)} → ${this.fmtDateIt(this.state.checkout)} (${nightsCount} nott${nightsCount === 1 ? 'e' : 'i'})`);
+        lines.push('');
+        groups.forEach(g => lines.push(`${g.label} (${g.count} nott${g.count === 1 ? 'e' : 'i'}, ${fmt(g.total / g.count)}/notte): ${fmt(g.total)}`));
+        if (discount) lines.push(`Sconto: -${fmt(discount)}`);
+        lines.push(`Pulizie: ${fmt(cleaning)}`);
+        if (linensCost) lines.push(`Lenzuola e asciugamani (${totalGuests} persone): ${fmt(linensCost)}`);
+        lines.push(`Tassa di soggiorno (${adults} adult${adults === 1 ? 'o' : 'i'} × ${taxNights} giorni): ${fmt(tax)}`);
+        lines.push('');
+        lines.push(`TOTALE: ${fmt(total)}`);
+        try { navigator.clipboard.writeText(lines.join('\n')); } catch (e) {}
+        this.setState({ copied: true });
+        setTimeout(() => this.setState({ copied: false }), 2000);
+      },
+    };
+  }
+}
+
+</script>
+</body>
+</html>

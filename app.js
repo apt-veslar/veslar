@@ -202,6 +202,7 @@ window.showTab = function(t, btn) {
   if(t==='dashboard') renderDashboard();
   if(t==='prenotazioni') renderBookings();
   if(t==='clienti') renderCustomers();
+  if(t==='calcolatore') renderCalculator();
   if(t==='prezzi') renderPrices();
   if(t==='sync') loadIcalInputs();
   if(t==='backup') showLastBackupStatus();
@@ -512,6 +513,177 @@ window.savePrices=async function(){
   extras.deposit=parseInt(document.getElementById('price-deposit').value)||0;
   await saveSettings();
   toast('Tariffe salvate!');
+};
+
+// ---- CALCOLATORE ----
+let calcApt = 1;
+let calcCleaning = 50;
+let calcLinens = false;
+let calcInitialized = false;
+let calcSummaryData = null;
+let calcCopyTimeout = null;
+
+// Season rate table + per-night rate derivation, matching the design handoff
+// (design_handoff_price_calculator) exactly. The two "Alta invernale" entries
+// are intentionally separate (different keys, Jan 7-31 vs Feb-Mar) even
+// though they share a label and rates, reproducing the reference tool's own
+// grouping behavior — a stay spanning the Jan/Feb boundary shows two
+// "Alta invernale" lines rather than one merged one.
+const calcSeasons = [
+  { key:'capodanno', label:'Capodanno', match:(m,d)=>(m===12&&d>=27)||(m===1&&d<=3), rates:{1:{week:1750,weekend:500},2:{week:1250,weekend:350}} },
+  { key:'natale', label:'Natale', match:(m,d)=>m===12&&d>=20&&d<=26, rates:{1:{week:1500,weekend:430},2:{week:1000,weekend:280}} },
+  { key:'alta_invernale', label:'Alta invernale', match:(m)=>(m===2||m===3), rates:{1:{week:1300,weekend:420},2:{week:875,weekend:300}} },
+  { key:'alta_invernale_gen', label:'Alta invernale', match:(m,d)=>m===1&&d>=7, rates:{1:{week:1300,weekend:420},2:{week:875,weekend:300}} },
+  { key:'alta_estiva', label:'Alta estiva', match:(m)=>m===7||m===8, rates:{1:{week:1300,weekend:420},2:{week:875,weekend:300}} },
+  { key:'bassa', label:'Bassa/media stagione', match:()=>true, rates:{1:{week:750,weekend:250},2:{week:525,weekend:180}} },
+];
+
+function calcGetSeason(date){
+  const m=date.getMonth()+1, d=date.getDate();
+  for(const s of calcSeasons) if(s.key!=='bassa' && s.match(m,d)) return s;
+  return calcSeasons[calcSeasons.length-1];
+}
+
+function calcNightlyRate(date, apt){
+  const season = calcGetSeason(date);
+  const r = season.rates[apt];
+  const isWeekendNight = date.getDay()===5 || date.getDay()===6; // Fri/Sat
+  const rate = isWeekendNight ? r.weekend/2 : (r.week-r.weekend)/5;
+  return { season, rate };
+}
+
+function calcComputeNights(checkin, checkout, apt){
+  if(!checkin || !checkout) return [];
+  const start=new Date(checkin+'T00:00:00');
+  const end=new Date(checkout+'T00:00:00');
+  if(end<=start) return [];
+  const nights=[];
+  let cur=new Date(start);
+  while(cur<end){
+    const {season,rate}=calcNightlyRate(cur, apt);
+    nights.push({date:new Date(cur), season, rate});
+    cur.setDate(cur.getDate()+1);
+  }
+  return nights;
+}
+
+function calcFmtEuro(n){ return '€'+Math.round(n).toLocaleString('it-IT'); }
+function calcFmtDateIt(iso){
+  const d=new Date(iso+'T00:00:00');
+  const calcMonths=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
+  return d.getDate()+' '+calcMonths[d.getMonth()]+' '+d.getFullYear();
+}
+
+window.setCalcApt = function(n){ calcApt=n; renderCalculator(); };
+window.setCalcCleaning = function(v){ calcCleaning=v; renderCalculator(); };
+window.toggleCalcLinens = function(){ calcLinens=!calcLinens; renderCalculator(); };
+
+window.renderCalculator = function(){
+  if(!calcInitialized){
+    calcInitialized = true;
+    const t=new Date(); const t2=new Date(t); t2.setDate(t2.getDate()+7);
+    document.getElementById('calc-checkin').value = t.toISOString().split('T')[0];
+    document.getElementById('calc-checkout').value = t2.toISOString().split('T')[0];
+    document.getElementById('calc-adults').value = 2;
+    document.getElementById('calc-children').value = 0;
+    document.getElementById('calc-discount').value = 0;
+  }
+
+  document.getElementById('calc-apt-toggle').innerHTML = [1,2].map(a=>
+    `<button class="apt-tab${calcApt===a?' active-apt'+a:''}" onclick="setCalcApt(${a})">${a===1?'Olbe (Apt 1)':'Poch (Apt 2)'}</button>`
+  ).join('');
+
+  document.getElementById('calc-cleaning-options').innerHTML = [40,50,60].map(v=>
+    `<button class="choice-pill${calcCleaning===v?' active':''}" onclick="setCalcCleaning(${v})">€${v}</button>`
+  ).join('');
+
+  document.getElementById('calc-linens-toggle').className = 'toggle-switch'+(calcLinens?' on':'');
+
+  const checkin = document.getElementById('calc-checkin').value;
+  const checkout = document.getElementById('calc-checkout').value;
+  const adults = parseInt(document.getElementById('calc-adults').value)||0;
+  const children = parseInt(document.getElementById('calc-children').value)||0;
+  const discountInput = parseFloat(document.getElementById('calc-discount').value)||0;
+
+  const badgeEl = document.getElementById('calc-badge');
+  badgeEl.className = 'badge badge-apt'+calcApt;
+  badgeEl.textContent = aptNames[calcApt];
+
+  const nights = calcComputeNights(checkin, checkout, calcApt);
+  const body = document.getElementById('calc-preventivo-body');
+  const platformsCard = document.getElementById('calc-platforms-card');
+
+  if(!nights.length){
+    body.innerHTML = '<div class="empty">Seleziona un check-out successivo al check-in.</div>';
+    platformsCard.style.display = 'none';
+    calcSummaryData = null;
+    return;
+  }
+
+  const rent = nights.reduce((s,n)=>s+n.rate,0);
+  const groups = [];
+  nights.forEach(n=>{
+    let g = groups.find(g=>g.key===n.season.key);
+    if(!g){ g={key:n.season.key,label:n.season.label,count:0,total:0}; groups.push(g); }
+    g.count++; g.total+=n.rate;
+  });
+  const totalGuests = adults+children;
+  const linensCost = calcLinens ? 10*totalGuests : 0;
+  const taxNights = Math.min(nights.length, 7);
+  const tax = 2*adults*taxNights;
+  const discount = Math.max(0, Math.min(discountInput, rent));
+  const total = rent - discount + calcCleaning + linensCost + tax;
+
+  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${nights.length} notti · ${calcFmtDateIt(checkin)} → ${calcFmtDateIt(checkout)}</div>`;
+  groups.forEach(g=>{
+    html += `<div class="price-row"><span>Affitto — ${g.label} (${g.count} notti, ${calcFmtEuro(g.total/g.count)}/notte)</span><strong>${calcFmtEuro(g.total)}</strong></div>`;
+  });
+  if(discount>0){
+    html += `<div class="price-row"><span>Sconto</span><strong style="color:var(--airbnb-text);">−${calcFmtEuro(discount)}</strong></div>`;
+  }
+  html += `<div class="price-row"><span>Pulizie</span><strong>${calcFmtEuro(calcCleaning)}</strong></div>`;
+  if(linensCost>0){
+    html += `<div class="price-row"><span>Lenzuola e asciugamani</span><strong>${calcFmtEuro(linensCost)}</strong></div>`;
+  }
+  html += `<div class="price-row"><span>Tassa di soggiorno (${adults} adulti × ${taxNights} giorni)</span><strong>${calcFmtEuro(tax)}</strong></div>`;
+  html += `<div class="price-row" style="border:none;padding-top:14px;"><span style="font-weight:700;">Totale</span><span style="font-weight:700;font-size:20px;">${calcFmtEuro(total)}</span></div>`;
+  html += `<div style="margin-top:1rem;text-align:right;"><button class="btn btn-primary" id="calc-copy-btn" onclick="copyCalcSummary()">Copia riepilogo per il cliente</button></div>`;
+  body.innerHTML = html;
+
+  platformsCard.style.display = '';
+  document.getElementById('calc-platforms-body').innerHTML = `
+    <div class="price-row"><span>Totale diretto</span><strong>${calcFmtEuro(total)}</strong></div>
+    <div class="price-row"><span>Netto host (Airbnb, −3%)</span><strong>${calcFmtEuro(total*0.97)}</strong></div>
+    <div class="price-row" style="border:none;"><span>Totale pagato ospite (Airbnb, +15%)</span><strong>${calcFmtEuro(total*1.15)}</strong></div>`;
+
+  calcSummaryData = { aptName: aptNames[calcApt], checkin, checkout, nightsCount: nights.length, groups, discount, cleaning: calcCleaning, linensCost, totalGuests, adults, taxNights, tax, total };
+};
+
+window.copyCalcSummary = async function(){
+  const d = calcSummaryData;
+  if(!d) return;
+  const lines = [];
+  lines.push(`Preventivo appartamento ${d.aptName}`);
+  lines.push(`${calcFmtDateIt(d.checkin)} → ${calcFmtDateIt(d.checkout)} (${d.nightsCount} nott${d.nightsCount===1?'e':'i'})`);
+  lines.push('');
+  d.groups.forEach(g=>lines.push(`${g.label} (${g.count} nott${g.count===1?'e':'i'}, ${calcFmtEuro(g.total/g.count)}/notte): ${calcFmtEuro(g.total)}`));
+  if(d.discount) lines.push(`Sconto: -${calcFmtEuro(d.discount)}`);
+  lines.push(`Pulizie: ${calcFmtEuro(d.cleaning)}`);
+  if(d.linensCost) lines.push(`Lenzuola e asciugamani (${d.totalGuests} persone): ${calcFmtEuro(d.linensCost)}`);
+  lines.push(`Tassa di soggiorno (${d.adults} adult${d.adults===1?'o':'i'} × ${d.taxNights} giorni): ${calcFmtEuro(d.tax)}`);
+  lines.push('');
+  lines.push(`TOTALE: ${calcFmtEuro(d.total)}`);
+  try { await navigator.clipboard.writeText(lines.join('\n')); } catch(e){}
+  const btn = document.getElementById('calc-copy-btn');
+  if(btn){
+    btn.textContent = '✓ Copiato';
+    btn.classList.add('btn-success');
+    clearTimeout(calcCopyTimeout);
+    calcCopyTimeout = setTimeout(()=>{
+      btn.textContent = 'Copia riepilogo per il cliente';
+      btn.classList.remove('btn-success');
+    }, 2000);
+  }
 };
 
 // ---- ICAL ----

@@ -83,6 +83,15 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .btn-primary:hover { opacity: 0.85; }
 .btn-sm { padding: 5px 12px; font-size: 12px; }
 .btn-danger { color: var(--airbnb-text); border-color: var(--airbnb-dot); }
+.btn-success { background: var(--apt1); color: #fff; border-color: var(--apt1); }
+
+.choice-pill { padding: 6px 14px; font-size: 13px; font-weight: 500; border-radius: var(--radius); cursor: pointer; border: 0.5px solid var(--border-sec); background: none; color: var(--text-sec); }
+.choice-pill.active { background: var(--text); color: var(--bg); border-color: var(--text); }
+
+.toggle-switch { width: 44px; height: 26px; border-radius: 14px; border: none; cursor: pointer; position: relative; flex-shrink: 0; background: var(--border-sec); transition: background 0.15s; }
+.toggle-switch.on { background: var(--apt1); }
+.toggle-knob { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.25); transition: left 0.15s; }
+.toggle-switch.on .toggle-knob { left: 20px; }
 .btn-danger:hover { background: var(--airbnb-bg); }
 .btn-logout { font-size: 12px; padding: 4px 10px; color: var(--text-sec); }
 
