@@ -4,6 +4,7 @@ import {
   saveBookingDoc, deleteBookingDoc,
   loadSettingsDoc, saveSettingsDoc, runCustomerBackfillIfNeeded,
 } from './firebase-core.js';
+import { calcComputeQuote, calcFmtEuro, calcFmtDateIt } from './pricing-calc.js';
 
 let bookings = [];
 let prices = { 1:{base:120,weekend:160,high:200,low:90}, 2:{base:100,weekend:140,high:170,low:80} };
@@ -523,57 +524,6 @@ let calcInitialized = false;
 let calcSummaryData = null;
 let calcCopyTimeout = null;
 
-// Season rate table + per-night rate derivation, matching the design handoff
-// (design_handoff_price_calculator) exactly. The two "Alta invernale" entries
-// are intentionally separate (different keys, Jan 7-31 vs Feb-Mar) even
-// though they share a label and rates, reproducing the reference tool's own
-// grouping behavior — a stay spanning the Jan/Feb boundary shows two
-// "Alta invernale" lines rather than one merged one.
-const calcSeasons = [
-  { key:'capodanno', label:'Capodanno', match:(m,d)=>(m===12&&d>=27)||(m===1&&d<=3), rates:{1:{week:1750,weekend:500},2:{week:1250,weekend:350}} },
-  { key:'natale', label:'Natale', match:(m,d)=>m===12&&d>=20&&d<=26, rates:{1:{week:1500,weekend:430},2:{week:1000,weekend:280}} },
-  { key:'alta_invernale', label:'Alta invernale', match:(m)=>(m===2||m===3), rates:{1:{week:1300,weekend:420},2:{week:875,weekend:300}} },
-  { key:'alta_invernale_gen', label:'Alta invernale', match:(m,d)=>m===1&&d>=7, rates:{1:{week:1300,weekend:420},2:{week:875,weekend:300}} },
-  { key:'alta_estiva', label:'Alta estiva', match:(m)=>m===7||m===8, rates:{1:{week:1300,weekend:420},2:{week:875,weekend:300}} },
-  { key:'bassa', label:'Bassa/media stagione', match:()=>true, rates:{1:{week:750,weekend:250},2:{week:525,weekend:180}} },
-];
-
-function calcGetSeason(date){
-  const m=date.getMonth()+1, d=date.getDate();
-  for(const s of calcSeasons) if(s.key!=='bassa' && s.match(m,d)) return s;
-  return calcSeasons[calcSeasons.length-1];
-}
-
-function calcNightlyRate(date, apt){
-  const season = calcGetSeason(date);
-  const r = season.rates[apt];
-  const isWeekendNight = date.getDay()===5 || date.getDay()===6; // Fri/Sat
-  const rate = isWeekendNight ? r.weekend/2 : (r.week-r.weekend)/5;
-  return { season, rate };
-}
-
-function calcComputeNights(checkin, checkout, apt){
-  if(!checkin || !checkout) return [];
-  const start=new Date(checkin+'T00:00:00');
-  const end=new Date(checkout+'T00:00:00');
-  if(end<=start) return [];
-  const nights=[];
-  let cur=new Date(start);
-  while(cur<end){
-    const {season,rate}=calcNightlyRate(cur, apt);
-    nights.push({date:new Date(cur), season, rate});
-    cur.setDate(cur.getDate()+1);
-  }
-  return nights;
-}
-
-function calcFmtEuro(n){ return '€'+Math.round(n).toLocaleString('it-IT'); }
-function calcFmtDateIt(iso){
-  const d=new Date(iso+'T00:00:00');
-  const calcMonths=['gen','feb','mar','apr','mag','giu','lug','ago','set','ott','nov','dic'];
-  return d.getDate()+' '+calcMonths[d.getMonth()]+' '+d.getFullYear();
-}
-
 window.setCalcApt = function(n){ calcApt=n; renderCalculator(); };
 window.setCalcCleaning = function(v){ calcCleaning=v; renderCalculator(); };
 window.toggleCalcLinens = function(){ calcLinens=!calcLinens; renderCalculator(); };
@@ -609,54 +559,40 @@ window.renderCalculator = function(){
   badgeEl.className = 'badge badge-apt'+calcApt;
   badgeEl.textContent = aptNames[calcApt];
 
-  const nights = calcComputeNights(checkin, checkout, calcApt);
   const body = document.getElementById('calc-preventivo-body');
   const platformsCard = document.getElementById('calc-platforms-card');
+  const quote = calcComputeQuote({ apt:calcApt, checkin, checkout, adults, children, cleaning:calcCleaning, linens:calcLinens, discountInput });
 
-  if(!nights.length){
+  if(!quote){
     body.innerHTML = '<div class="empty">Seleziona un check-out successivo al check-in.</div>';
     platformsCard.style.display = 'none';
     calcSummaryData = null;
     return;
   }
 
-  const rent = nights.reduce((s,n)=>s+n.rate,0);
-  const groups = [];
-  nights.forEach(n=>{
-    let g = groups.find(g=>g.key===n.season.key);
-    if(!g){ g={key:n.season.key,label:n.season.label,count:0,total:0}; groups.push(g); }
-    g.count++; g.total+=n.rate;
-  });
-  const totalGuests = adults+children;
-  const linensCost = calcLinens ? 10*totalGuests : 0;
-  const taxNights = Math.min(nights.length, 7);
-  const tax = 2*adults*taxNights;
-  const discount = Math.max(0, Math.min(discountInput, rent));
-  const total = rent - discount + calcCleaning + linensCost + tax;
-
-  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${nights.length} notti · ${calcFmtDateIt(checkin)} → ${calcFmtDateIt(checkout)}</div>`;
-  groups.forEach(g=>{
+  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${quote.nightsCount} notti · ${calcFmtDateIt(checkin)} → ${calcFmtDateIt(checkout)}</div>`;
+  quote.groups.forEach(g=>{
     html += `<div class="price-row"><span>Affitto — ${g.label} (${g.count} notti, ${calcFmtEuro(g.total/g.count)}/notte)</span><strong>${calcFmtEuro(g.total)}</strong></div>`;
   });
-  if(discount>0){
-    html += `<div class="price-row"><span>Sconto</span><strong style="color:var(--airbnb-text);">−${calcFmtEuro(discount)}</strong></div>`;
+  if(quote.discount>0){
+    html += `<div class="price-row"><span>Sconto</span><strong style="color:var(--airbnb-text);">−${calcFmtEuro(quote.discount)}</strong></div>`;
   }
-  html += `<div class="price-row"><span>Pulizie</span><strong>${calcFmtEuro(calcCleaning)}</strong></div>`;
-  if(linensCost>0){
-    html += `<div class="price-row"><span>Lenzuola e asciugamani</span><strong>${calcFmtEuro(linensCost)}</strong></div>`;
+  html += `<div class="price-row"><span>Pulizie</span><strong>${calcFmtEuro(quote.cleaning)}</strong></div>`;
+  if(quote.linensCost>0){
+    html += `<div class="price-row"><span>Lenzuola e asciugamani</span><strong>${calcFmtEuro(quote.linensCost)}</strong></div>`;
   }
-  html += `<div class="price-row"><span>Tassa di soggiorno (${adults} adulti × ${taxNights} giorni)</span><strong>${calcFmtEuro(tax)}</strong></div>`;
-  html += `<div class="price-row" style="border:none;padding-top:14px;"><span style="font-weight:700;">Totale</span><span style="font-weight:700;font-size:20px;">${calcFmtEuro(total)}</span></div>`;
+  html += `<div class="price-row"><span>Tassa di soggiorno (${quote.adults} adulti × ${quote.taxNights} giorni)</span><strong>${calcFmtEuro(quote.tax)}</strong></div>`;
+  html += `<div class="price-row" style="border:none;padding-top:14px;"><span style="font-weight:700;">Totale</span><span style="font-weight:700;font-size:20px;">${calcFmtEuro(quote.total)}</span></div>`;
   html += `<div style="margin-top:1rem;text-align:right;"><button class="btn btn-primary" id="calc-copy-btn" onclick="copyCalcSummary()">Copia riepilogo per il cliente</button></div>`;
   body.innerHTML = html;
 
   platformsCard.style.display = '';
   document.getElementById('calc-platforms-body').innerHTML = `
-    <div class="price-row"><span>Totale diretto</span><strong>${calcFmtEuro(total)}</strong></div>
-    <div class="price-row"><span>Netto host (Airbnb, −3%)</span><strong>${calcFmtEuro(total*0.97)}</strong></div>
-    <div class="price-row" style="border:none;"><span>Totale pagato ospite (Airbnb, +15%)</span><strong>${calcFmtEuro(total*1.15)}</strong></div>`;
+    <div class="price-row"><span>Totale diretto</span><strong>${calcFmtEuro(quote.total)}</strong></div>
+    <div class="price-row"><span>Netto host (Airbnb, −3%)</span><strong>${calcFmtEuro(quote.airbnbNet)}</strong></div>
+    <div class="price-row" style="border:none;"><span>Totale pagato ospite (Airbnb, +15%)</span><strong>${calcFmtEuro(quote.airbnbGuest)}</strong></div>`;
 
-  calcSummaryData = { aptName: aptNames[calcApt], checkin, checkout, nightsCount: nights.length, groups, discount, cleaning: calcCleaning, linensCost, totalGuests, adults, taxNights, tax, total };
+  calcSummaryData = { aptName: aptNames[calcApt], ...quote };
 };
 
 window.copyCalcSummary = async function(){

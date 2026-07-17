@@ -121,6 +121,55 @@
       <button class="btn btn-primary" style="width:100%;" onclick="savePrices()">Salva tutte le tariffe</button>
     </div>
 
+    <!-- CALCOLATORE -->
+    <div id="tab-calcolatore" class="m-section">
+      <div class="apt-tabs" id="calc-apt-toggle"></div>
+
+      <div class="card">
+        <div class="card-title">Date e ospiti</div>
+        <div class="form-row-2" style="gap:16px;">
+          <div><label class="form-label">Check-in</label><input class="form-input" type="date" id="calc-checkin" onchange="renderCalculator()"></div>
+          <div><label class="form-label">Check-out</label><input class="form-input" type="date" id="calc-checkout" onchange="renderCalculator()"></div>
+        </div>
+        <div class="form-row-2" style="gap:16px;margin-bottom:0;">
+          <div><label class="form-label">Adulti</label><input class="form-input" type="number" min="0" id="calc-adults" onchange="renderCalculator()"></div>
+          <div><label class="form-label">Bambini</label><input class="form-input" type="number" min="0" id="calc-children" onchange="renderCalculator()"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Extra</div>
+        <div class="price-row">
+          <span>Sconto sull'affitto</span>
+          <div style="display:flex;align-items:center;gap:6px;">
+            <input class="price-input" type="number" min="0" id="calc-discount" onchange="renderCalculator()">
+            <span class="price-unit">€</span>
+          </div>
+        </div>
+        <div class="price-row">
+          <span>Pulizie</span>
+          <div style="display:flex;gap:6px;" id="calc-cleaning-options"></div>
+        </div>
+        <div class="price-row" style="border:none;">
+          <div>
+            <div>Lenzuola e asciugamani</div>
+            <div style="font-size:11px;color:var(--text-ter);margin-top:2px;">Opzionale · €10 a persona, una tantum</div>
+          </div>
+          <button class="toggle-switch" id="calc-linens-toggle" onclick="toggleCalcLinens()"><span class="toggle-knob"></span></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Preventivo · <span class="badge" id="calc-badge"></span></div>
+        <div id="calc-preventivo-body"></div>
+      </div>
+
+      <div class="card" id="calc-platforms-card" style="display:none;">
+        <div class="card-title">Piattaforme di prenotazione</div>
+        <div id="calc-platforms-body"></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- BOTTOM NAV -->
@@ -140,6 +189,10 @@
     <button class="m-nav-btn" id="m-nav-prezzi" onclick="showTab('prezzi')">
       <span class="m-nav-icon m-nav-icon-coin">€</span>
       <span class="m-nav-label">Prezzi</span>
+    </button>
+    <button class="m-nav-btn" id="m-nav-calcolatore" onclick="showTab('calcolatore')">
+      <span class="m-nav-icon m-nav-icon-calc"><i></i><i></i><i></i><i></i></span>
+      <span class="m-nav-label">Calcolatore</span>
     </button>
   </div>
 </div>

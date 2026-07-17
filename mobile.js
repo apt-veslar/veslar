@@ -3,6 +3,7 @@ import {
   subscribeBookings as coreSubscribeBookings, subscribeCustomers as coreSubscribeCustomers,
   saveBookingDoc, deleteBookingDoc, loadSettingsDoc, saveSettingsDoc,
 } from './firebase-core.js';
+import { calcComputeQuote, calcFmtEuro, calcFmtDateIt } from './pricing-calc.js';
 
 let bookings = [];
 let customers = [];
@@ -146,6 +147,7 @@ window.showTab = function(t) {
   if(t==='dashboard') renderDashboard();
   if(t==='prenotazioni') renderBookings();
   if(t==='prezzi') renderPrices();
+  if(t==='calcolatore') renderCalculator();
 };
 
 // ---- DASHBOARD ----
@@ -395,6 +397,112 @@ window.savePrices = async function(){
   extras.deposit = parseInt(document.getElementById('m-price-deposit').value)||0;
   await saveSettings();
   toast('Tariffe salvate!');
+};
+
+// ---- CALCOLATORE ----
+let calcApt = 1;
+let calcCleaning = 50;
+let calcLinens = false;
+let calcInitialized = false;
+let calcSummaryData = null;
+let calcCopyTimeout = null;
+
+window.setCalcApt = function(n){ calcApt=n; renderCalculator(); };
+window.setCalcCleaning = function(v){ calcCleaning=v; renderCalculator(); };
+window.toggleCalcLinens = function(){ calcLinens=!calcLinens; renderCalculator(); };
+
+function renderCalculator(){
+  if(!calcInitialized){
+    calcInitialized = true;
+    const t=new Date(); const t2=new Date(t); t2.setDate(t2.getDate()+7);
+    document.getElementById('calc-checkin').value = t.toISOString().split('T')[0];
+    document.getElementById('calc-checkout').value = t2.toISOString().split('T')[0];
+    document.getElementById('calc-adults').value = 2;
+    document.getElementById('calc-children').value = 0;
+    document.getElementById('calc-discount').value = 0;
+  }
+
+  document.getElementById('calc-apt-toggle').innerHTML = [1,2].map(a=>
+    `<button class="apt-tab${calcApt===a?' active-apt'+a:''}" onclick="setCalcApt(${a})">${a===1?'Olbe (Apt 1)':'Poch (Apt 2)'}</button>`
+  ).join('');
+
+  document.getElementById('calc-cleaning-options').innerHTML = [40,50,60].map(v=>
+    `<button class="choice-pill${calcCleaning===v?' active':''}" onclick="setCalcCleaning(${v})">€${v}</button>`
+  ).join('');
+
+  document.getElementById('calc-linens-toggle').className = 'toggle-switch'+(calcLinens?' on':'');
+
+  const checkin = document.getElementById('calc-checkin').value;
+  const checkout = document.getElementById('calc-checkout').value;
+  const adults = parseInt(document.getElementById('calc-adults').value)||0;
+  const children = parseInt(document.getElementById('calc-children').value)||0;
+  const discountInput = parseFloat(document.getElementById('calc-discount').value)||0;
+
+  const badgeEl = document.getElementById('calc-badge');
+  badgeEl.className = 'badge badge-apt'+calcApt;
+  badgeEl.textContent = aptNames[calcApt];
+
+  const body = document.getElementById('calc-preventivo-body');
+  const platformsCard = document.getElementById('calc-platforms-card');
+  const quote = calcComputeQuote({ apt:calcApt, checkin, checkout, adults, children, cleaning:calcCleaning, linens:calcLinens, discountInput });
+
+  if(!quote){
+    body.innerHTML = '<div class="empty">Seleziona un check-out successivo al check-in.</div>';
+    platformsCard.style.display = 'none';
+    calcSummaryData = null;
+    return;
+  }
+
+  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${quote.nightsCount} notti · ${calcFmtDateIt(checkin)} → ${calcFmtDateIt(checkout)}</div>`;
+  quote.groups.forEach(g=>{
+    html += `<div class="price-row"><span>Affitto — ${g.label} (${g.count} notti, ${calcFmtEuro(g.total/g.count)}/notte)</span><strong>${calcFmtEuro(g.total)}</strong></div>`;
+  });
+  if(quote.discount>0){
+    html += `<div class="price-row"><span>Sconto</span><strong style="color:var(--airbnb-text);">−${calcFmtEuro(quote.discount)}</strong></div>`;
+  }
+  html += `<div class="price-row"><span>Pulizie</span><strong>${calcFmtEuro(quote.cleaning)}</strong></div>`;
+  if(quote.linensCost>0){
+    html += `<div class="price-row"><span>Lenzuola e asciugamani</span><strong>${calcFmtEuro(quote.linensCost)}</strong></div>`;
+  }
+  html += `<div class="price-row"><span>Tassa di soggiorno (${quote.adults} adulti × ${quote.taxNights} giorni)</span><strong>${calcFmtEuro(quote.tax)}</strong></div>`;
+  html += `<div class="price-row" style="border:none;padding-top:14px;"><span style="font-weight:700;">Totale</span><span style="font-weight:700;font-size:20px;">${calcFmtEuro(quote.total)}</span></div>`;
+  html += `<div style="margin-top:1rem;text-align:right;"><button class="btn btn-primary" id="calc-copy-btn" onclick="copyCalcSummary()">Copia riepilogo per il cliente</button></div>`;
+  body.innerHTML = html;
+
+  platformsCard.style.display = '';
+  document.getElementById('calc-platforms-body').innerHTML = `
+    <div class="price-row"><span>Totale diretto</span><strong>${calcFmtEuro(quote.total)}</strong></div>
+    <div class="price-row"><span>Netto host (Airbnb, −3%)</span><strong>${calcFmtEuro(quote.airbnbNet)}</strong></div>
+    <div class="price-row" style="border:none;"><span>Totale pagato ospite (Airbnb, +15%)</span><strong>${calcFmtEuro(quote.airbnbGuest)}</strong></div>`;
+
+  calcSummaryData = { aptName: aptNames[calcApt], ...quote };
+}
+
+window.copyCalcSummary = async function(){
+  const d = calcSummaryData;
+  if(!d) return;
+  const lines = [];
+  lines.push(`Preventivo appartamento ${d.aptName}`);
+  lines.push(`${calcFmtDateIt(d.checkin)} → ${calcFmtDateIt(d.checkout)} (${d.nightsCount} nott${d.nightsCount===1?'e':'i'})`);
+  lines.push('');
+  d.groups.forEach(g=>lines.push(`${g.label} (${g.count} nott${g.count===1?'e':'i'}, ${calcFmtEuro(g.total/g.count)}/notte): ${calcFmtEuro(g.total)}`));
+  if(d.discount) lines.push(`Sconto: -${calcFmtEuro(d.discount)}`);
+  lines.push(`Pulizie: ${calcFmtEuro(d.cleaning)}`);
+  if(d.linensCost) lines.push(`Lenzuola e asciugamani (${d.totalGuests} persone): ${calcFmtEuro(d.linensCost)}`);
+  lines.push(`Tassa di soggiorno (${d.adults} adult${d.adults===1?'o':'i'} × ${d.taxNights} giorni): ${calcFmtEuro(d.tax)}`);
+  lines.push('');
+  lines.push(`TOTALE: ${calcFmtEuro(d.total)}`);
+  try { await navigator.clipboard.writeText(lines.join('\n')); } catch(e){}
+  const btn = document.getElementById('calc-copy-btn');
+  if(btn){
+    btn.textContent = '✓ Copiato';
+    btn.classList.add('btn-success');
+    clearTimeout(calcCopyTimeout);
+    calcCopyTimeout = setTimeout(()=>{
+      btn.textContent = 'Copia riepilogo per il cliente';
+      btn.classList.remove('btn-success');
+    }, 2000);
+  }
 };
 
 // ---- THEME (shares the apt_theme key with the desktop app) ----

@@ -53,6 +53,8 @@ html, body { height: 100%; }
 .m-nav-icon-list i { height: 2px; background: currentColor; border-radius: 1px; width: 100%; display: block; }
 .m-nav-icon-list i:nth-child(2) { width: 70%; }
 .m-nav-icon-coin { width: 16px; height: 16px; border-radius: 50%; border: 1.6px solid currentColor; font-size: 10px; font-weight: 700; line-height: 1; color: currentColor; }
+.m-nav-icon-calc { width: 16px; height: 16px; border: 1.6px solid currentColor; border-radius: 3px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr; gap: 2px; padding: 2.5px; box-sizing: border-box; }
+.m-nav-icon-calc i { background: currentColor; border-radius: 50%; display: block; }
 
 /* ---- STACKED BOOKING ROW (Prenotazioni list, day-popup list) ---- */
 .m-booking-row { padding: 10px 0; border-bottom: 0.5px solid var(--border); }
