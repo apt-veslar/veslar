@@ -288,6 +288,12 @@ window.setApt=function(n){
 };
 window.setCalMonth=function(v){calMonth=parseInt(v);renderCalendar();};
 window.setCalYear=function(v){calYear=parseInt(v);renderCalendar();};
+window.calMonthStep=function(dir){
+  calMonth+=dir;
+  if(calMonth<0){calMonth=11;calYear--;}
+  else if(calMonth>11){calMonth=0;calYear++;}
+  renderCalendar();
+};
 
 function populateCalDropdowns(){
   const mSel=document.getElementById('cal-month-select');
@@ -299,8 +305,7 @@ function populateCalDropdowns(){
   mSel.value=calMonth;
   if(!ySel.options.length || !Array.from(ySel.options).find(o=>parseInt(o.value)===calYear)){
     ySel.innerHTML='';
-    const curY=new Date().getFullYear();
-    for(let y=curY-3;y<=curY+3;y++){const o=document.createElement('option');o.value=y;o.textContent=y;ySel.appendChild(o);}
+    for(let y=calYear-3;y<=calYear+3;y++){const o=document.createElement('option');o.value=y;o.textContent=y;ySel.appendChild(o);}
   }
   ySel.value=calYear;
 }

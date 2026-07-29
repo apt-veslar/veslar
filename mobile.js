@@ -129,6 +129,7 @@ function bookingRowHtml(b, opts){
         <span class="booking-dates">${fmtDate(b.checkin)} → ${fmtDate(b.checkout)}</span>
         <span class="booking-amount">€${Number(b.amount||0).toLocaleString('it')}</span>
       </div>
+      ${b.notes?`<div class="m-booking-notes">${b.notes}</div>`:''}
       <div class="m-booking-actions">
         <button class="btn btn-sm" onclick="${opts.editHandler||`editBooking('${b.id}')`}">✎ Modifica</button>
         ${opts.showDelete?`<button class="btn btn-sm btn-danger" onclick="deleteBooking('${b.id}')">✕ Elimina</button>`:''}
@@ -211,6 +212,12 @@ window.setApt = function(n){
 };
 window.setCalMonth = function(v){ calMonth=parseInt(v); renderCalendar(); };
 window.setCalYear = function(v){ calYear=parseInt(v); renderCalendar(); };
+window.calMonthStep = function(dir){
+  calMonth+=dir;
+  if(calMonth<0){calMonth=11;calYear--;}
+  else if(calMonth>11){calMonth=0;calYear++;}
+  renderCalendar();
+};
 
 function populateCalDropdowns(){
   const mSel=document.getElementById('m-cal-month-select');
@@ -221,8 +228,7 @@ function populateCalDropdowns(){
   mSel.value=calMonth;
   if(!ySel.options.length || !Array.from(ySel.options).find(o=>parseInt(o.value)===calYear)){
     ySel.innerHTML='';
-    const curY=new Date().getFullYear();
-    for(let y=curY-3;y<=curY+3;y++){const o=document.createElement('option');o.value=y;o.textContent=y;ySel.appendChild(o);}
+    for(let y=calYear-3;y<=calYear+3;y++){const o=document.createElement('option');o.value=y;o.textContent=y;ySel.appendChild(o);}
   }
   ySel.value=calYear;
 }
@@ -271,7 +277,7 @@ window.closeDayPopup = function(){
   dayPopupDate = null;
 };
 
-// ---- PRENOTAZIONI (paginated) ----
+// ---- PRENOTAZIONI (grouped by month, paginated by whole groups) ----
 window.renderBookings = function(page){
   if(page !== undefined) bookingsPage = page;
   const aptF=document.getElementById('m-filter-apt')?.value||'all';
@@ -279,14 +285,39 @@ window.renderBookings = function(page){
   let filtered=bookings.filter(b=>(aptF==='all'||b.apt===parseInt(aptF))&&(srcF==='all'||b.source===srcF));
   filtered.sort((a,b)=>new Date(b.checkin)-new Date(a.checkin));
 
-  const total = filtered.length;
-  const totalPages = Math.max(1, Math.ceil(total / BOOKINGS_PER_PAGE));
+  const groups = [];
+  let curKey = null, curGroup = null;
+  filtered.forEach(b=>{
+    const d = new Date(b.checkin);
+    const key = d.getFullYear()+'-'+d.getMonth();
+    if(key !== curKey){
+      curKey = key;
+      curGroup = { label: monthNames[d.getMonth()]+' '+d.getFullYear(), items: [] };
+      groups.push(curGroup);
+    }
+    curGroup.items.push(b);
+  });
+
+  const pages = [];
+  let curPage = [], curCount = 0;
+  groups.forEach(g=>{
+    if(curCount>0 && curCount+g.items.length>BOOKINGS_PER_PAGE){
+      pages.push(curPage);
+      curPage = []; curCount = 0;
+    }
+    curPage.push(g);
+    curCount += g.items.length;
+  });
+  if(curPage.length) pages.push(curPage);
+
+  const totalPages = Math.max(1, pages.length);
   if(bookingsPage > totalPages) bookingsPage = totalPages;
-  const start = (bookingsPage-1)*BOOKINGS_PER_PAGE;
-  const pageItems = filtered.slice(start, start+BOOKINGS_PER_PAGE);
+  const pageGroups = pages[bookingsPage-1] || [];
 
   const el=document.getElementById('m-bookings-list');
-  let html = pageItems.length ? pageItems.map(b=>bookingRowHtml(b,{showDelete:true})).join('') : '<div class="empty">Nessuna prenotazione trovata</div>';
+  let html = pageGroups.length ? pageGroups.map(g=>
+    `<div class="m-month-header">${g.label}</div>${g.items.map(b=>bookingRowHtml(b,{showDelete:true})).join('')}`
+  ).join('') : '<div class="empty">Nessuna prenotazione trovata</div>';
 
   if(totalPages > 1){
     const p = bookingsPage;

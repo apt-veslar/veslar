@@ -71,9 +71,11 @@
 
     <!-- CALENDARIO -->
     <div id="tab-calendario" class="m-section">
-      <div style="display:flex;gap:8px;margin-bottom:12px;">
+      <div style="display:flex;gap:6px;margin-bottom:12px;align-items:center;">
+        <button class="btn btn-sm" style="padding:6px 10px;font-size:14px;" onclick="calMonthStep(-1)">‹</button>
         <select class="filter-select" id="m-cal-month-select" onchange="setCalMonth(this.value)" style="flex:1;font-weight:600;font-size:13px;"></select>
-        <select class="filter-select" id="m-cal-year-select" onchange="setCalYear(this.value)" style="width:84px;font-weight:600;font-size:13px;"></select>
+        <select class="filter-select" id="m-cal-year-select" onchange="setCalYear(this.value)" style="width:74px;font-weight:600;font-size:13px;"></select>
+        <button class="btn btn-sm" style="padding:6px 10px;font-size:14px;" onclick="calMonthStep(1)">›</button>
       </div>
       <div class="cal-legend" style="margin-bottom:12px;flex-wrap:nowrap;overflow-x:auto;">
         <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--apt1-cal-dot);"></div>Olbe</div>

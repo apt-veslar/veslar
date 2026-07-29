@@ -95,8 +95,10 @@
     <div id="tab-calendario" class="section">
       <div class="cal-header">
         <div class="cal-nav">
+          <button class="btn btn-sm" style="padding:5px 10px;font-size:14px;" onclick="calMonthStep(-1)">‹</button>
           <select class="filter-select" id="cal-month-select" onchange="setCalMonth(this.value)" style="font-weight:600;font-size:14px;"></select>
           <select class="filter-select" id="cal-year-select" onchange="setCalYear(this.value)" style="font-weight:600;font-size:14px;width:80px;"></select>
+          <button class="btn btn-sm" style="padding:5px 10px;font-size:14px;" onclick="calMonthStep(1)">›</button>
         </div>
         <div class="cal-legend">
           <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--apt1-cal-dot);"></div>Olbe</div>
@@ -305,7 +307,7 @@
     <div class="cal-popup-row"><span class="cal-popup-label">Notti</span><span class="cal-popup-value" id="cal-popup-nights">—</span></div>
     <div class="cal-popup-row"><span class="cal-popup-label">Importo</span><span class="cal-popup-value" id="cal-popup-amount">—</span></div>
     <div class="cal-popup-row" id="cal-popup-guests-row"><span class="cal-popup-label">Ospiti</span><span class="cal-popup-value" id="cal-popup-guests">—</span></div>
-    <div class="cal-popup-row" id="cal-popup-notes-row"><span class="cal-popup-label">Note</span><span class="cal-popup-value" id="cal-popup-notes">—</span></div>
+    <div class="cal-popup-row notes-row" id="cal-popup-notes-row"><span class="cal-popup-label">Note</span><span class="cal-popup-value" id="cal-popup-notes">—</span></div>
     <div class="cal-popup-actions">
       <button class="btn btn-sm" onclick="editFromCalPopup()">✎ Modifica</button>
     </div>

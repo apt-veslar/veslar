@@ -64,7 +64,12 @@ html, body { height: 100%; }
 .m-booking-row:last-child { border-bottom: none; }
 .m-booking-top { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-bottom: 5px; }
 .m-booking-mid { display: flex; justify-content: space-between; align-items: center; }
+.m-booking-notes { font-size: 12px; color: var(--text-sec); margin-top: 5px; line-height: 1.45; white-space: pre-wrap; word-break: break-word; }
 .m-booking-actions { display: flex; gap: 8px; margin-top: 6px; }
+
+/* ---- BOOKINGS LIST: month group header ---- */
+.m-month-header { font-size: 11px; font-weight: 700; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.03em; padding: 12px 0 6px; }
+.m-month-header:first-child { padding-top: 2px; }
 
 /* ---- BOTTOM SHEETS (booking modal, day popup) ---- */
 .m-sheet-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 100; align-items: flex-end; justify-content: center; }
