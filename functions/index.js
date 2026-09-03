@@ -26,6 +26,12 @@ function icalTimeToISODate(t) {
   return `${t.year}-${String(t.month).padStart(2, '0')}-${String(t.day).padStart(2, '0')}`;
 }
 
+// Airbnb (and some Booking.com listings) export calendar-blocked /
+// "not available" ranges as VEVENTs alongside real reservations, with no
+// reservation reference in the description. Those aren't guest bookings.
+const BLOCKED_SUMMARY_RE = /not available/i;
+const RESERVATION_REF_RE = /reservation/i;
+
 async function fetchAndParseFeed(url) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -37,12 +43,15 @@ async function fetchAndParseFeed(url) {
   for (const vevent of vevents) {
     const event = new ICAL.Event(vevent);
     if (!event.uid || !event.startDate || !event.endDate) continue;
+    const summary = (event.summary || '').trim();
+    const description = (event.description || '').trim();
+    if (BLOCKED_SUMMARY_RE.test(summary) && !RESERVATION_REF_RE.test(description)) continue;
     events.push({
       uid: event.uid,
       checkin: icalTimeToISODate(event.startDate),
       checkout: icalTimeToISODate(event.endDate),
-      summary: (event.summary || '').trim(),
-      description: (event.description || '').trim(),
+      summary,
+      description,
     });
   }
   return events;
