@@ -214,7 +214,7 @@
 
     <!-- SYNC -->
     <div id="tab-sync" class="section">
-      <div class="info-box">ℹ️ Airbnb e Booking.com supportano la sincronizzazione tramite <strong>iCal</strong> — lo standard usato da tutti i software professionali. Copia il link iCal dalle rispettive piattaforme e incollalo qui. I link vengono salvati nel tuo account.</div>
+      <div class="info-box">ℹ️ Airbnb e Booking.com supportano la sincronizzazione tramite <strong>iCal</strong> — lo standard usato da tutti i software professionali. Copia il link iCal dalle rispettive piattaforme e incollalo qui. Una volta salvati, i link vengono controllati automaticamente ogni ora e le prenotazioni compaiono da sole nel calendario; puoi anche forzare un controllo immediato con "Sincronizza ora".</div>
       <div class="grid2" style="margin-bottom:1rem;">
         <div class="ical-box">
           <div style="display:flex;align-items:center;gap:8px;margin-bottom:10px;"><div class="cal-legend-dot" style="background:var(--airbnb-dot);width:12px;height:12px;"></div><strong style="font-size:14px;">Airbnb</strong></div>
@@ -233,10 +233,12 @@
           <input class="ical-input" type="url" placeholder="https://admin.booking.com/hotel/hoteladmin/ical.ics?..." id="ical-booking-2">
         </div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:1.5rem;">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:6px;">
         <button class="btn btn-primary" onclick="saveIcalLinks()">Salva link iCal</button>
+        <button class="btn btn-sm" id="sync-now-btn" onclick="syncIcalNow()">Sincronizza ora</button>
         <span id="sync-status" style="font-size:12px;color:var(--text-sec);"></span>
       </div>
+      <div id="last-sync-status" style="font-size:12px;color:var(--text-sec);margin-bottom:1.5rem;"></div>
       <div class="card">
         <div class="card-title">Esporta il tuo calendario (.ics)</div>
         <p style="font-size:13px;color:var(--text-sec);margin-bottom:1rem;">Scarica le prenotazioni come file iCal da importare in Google Calendar, Apple Calendar o altre piattaforme.</p>

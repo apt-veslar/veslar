@@ -2,7 +2,7 @@ import {
   signInWithGoogle as coreSignInWithGoogle, signOutUser, watchAuth,
   subscribeBookings as coreSubscribeBookings, subscribeCustomers as coreSubscribeCustomers,
   saveBookingDoc, deleteBookingDoc,
-  loadSettingsDoc, saveSettingsDoc, runCustomerBackfillIfNeeded,
+  loadSettingsDoc, saveSettingsDoc, runCustomerBackfillIfNeeded, triggerIcalSyncNow,
 } from './firebase-core.js';
 import { calcComputeQuote, calcFmtEuro, calcFmtDateIt } from './pricing-calc.js';
 
@@ -10,6 +10,7 @@ let bookings = [];
 let prices = { 1:{base:120,weekend:160,high:200,low:90}, 2:{base:100,weekend:140,high:170,low:80} };
 let extras = { cleaning:60, deposit:200 };
 let ical = { 'airbnb-1':'','airbnb-2':'','booking-1':'','booking-2':'' };
+let lastSync = null;
 let unsubBookings = null;
 let customers = [];
 let unsubCustomers = null;
@@ -72,6 +73,7 @@ async function loadSettings() {
     if(d.prices) prices = d.prices;
     if(d.extras) extras = d.extras;
     if(d.ical) ical = d.ical;
+    lastSync = d.lastSync || null;
   }
 }
 
@@ -633,6 +635,28 @@ function loadIcalInputs(){
     const el=document.getElementById('ical-'+k);
     if(el) el.value=ical[k]||'';
   });
+  renderLastSyncStatus();
+}
+
+function renderLastSyncStatus(){
+  const el=document.getElementById('last-sync-status');
+  if(!el) return;
+  if(!lastSync || !lastSync.at){
+    el.textContent='Nessuna sincronizzazione automatica ancora eseguita.';
+    return;
+  }
+  const results=lastSync.results||{};
+  const parts=[];
+  let anyError=false;
+  Object.keys(results).forEach(k=>{
+    const r=results[k];
+    if(!r) return;
+    if(r.error){ anyError=true; parts.push(`${k}: errore (${r.error})`); return; }
+    if(r.added||r.updated||r.removed) parts.push(`${k}: +${r.added} ~${r.updated} -${r.removed}`);
+  });
+  const when='Ultima sincronizzazione: '+new Date(lastSync.at).toLocaleString('it');
+  el.textContent = parts.length ? `${when} (${parts.join(', ')})` : when;
+  el.style.color = anyError ? 'var(--danger, #d33)' : 'var(--text-sec)';
 }
 
 window.saveIcalLinks=async function(){
@@ -643,6 +667,25 @@ window.saveIcalLinks=async function(){
   await saveSettings();
   document.getElementById('sync-status').textContent='Salvato — '+new Date().toLocaleTimeString('it');
   toast('Link iCal salvati!');
+};
+
+window.syncIcalNow=async function(){
+  const btn=document.getElementById('sync-now-btn');
+  const statusEl=document.getElementById('sync-status');
+  if(btn){ btn.disabled=true; btn.textContent='Sincronizzazione in corso…'; }
+  try {
+    const { results } = await triggerIcalSyncNow();
+    lastSync = { at: new Date().toISOString(), results };
+    renderLastSyncStatus();
+    const hasError = Object.values(results||{}).some(r=>r && r.error);
+    if(statusEl) statusEl.textContent = hasError ? 'Sincronizzato con errori — vedi sotto' : 'Sincronizzato!';
+    toast(hasError ? 'Sincronizzazione completata con errori' : 'Sincronizzazione completata!');
+  } catch(e){
+    console.error('syncIcalNow', e);
+    toast('Errore durante la sincronizzazione: '+(e.message||e));
+  } finally {
+    if(btn){ btn.disabled=false; btn.textContent='Sincronizza ora'; }
+  }
 };
 
 window.exportIcal=function(apt){

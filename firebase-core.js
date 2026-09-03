@@ -1,6 +1,7 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
 import { getFirestore, doc, collection, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyAbCejZ27wKUl2aNlZnqHMe1QqeLohKBzk",
@@ -14,6 +15,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const functions = getFunctions(app);
 
 let currentUser = null;
 
@@ -77,6 +79,14 @@ export async function loadSettingsDoc() {
 // fields it doesn't know about with a full-document overwrite.
 export async function saveSettingsDoc(settings) {
   await setDoc(userDoc('settings/main'), settings, { merge: true });
+}
+
+// Chiama la Cloud Function triggerIcalSync (functions/index.js) per forzare
+// una sincronizzazione immediata dei feed iCal salvati dall'utente corrente.
+export async function triggerIcalSyncNow() {
+  const call = httpsCallable(functions, 'triggerIcalSync');
+  const res = await call();
+  return res.data;
 }
 
 // ---- BOOKINGS REALTIME ----

@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "staging": "apt-veslar"
+  },
+  "targets": {},
+  "etags": {}
+}

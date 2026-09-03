@@ -14,7 +14,7 @@ No build step. Open `index.html` directly in a browser. Firebase SDK loads from 
 
 No custom GitHub Actions workflows. GitHub Pages deploys automatically from `main` via the repo's built-in Pages deployment (Settings → Pages), independent of any workflow file.
 
-There are no tests, no linting tools, and no package manager.
+The static site (`index.html`/`app.js`/`mobile.js`/etc.) has no tests, no linting tools, and no package manager. The `functions/` directory (Cloud Functions, see below) is a separate Node project with its own `package.json` and is deployed manually via `firebase deploy --only functions` — see `functions/README.md`.
 
 ## Architecture
 
@@ -24,11 +24,12 @@ The application is split across three files:
 - **`styles.css`** — all CSS custom properties, light/dark theme, and component styles
 - **`app.js`** — ES6 module; Firebase init, auth, Firestore listeners, and all render functions
 
-**Backend: Firebase (Auth + Firestore)**
+**Backend: Firebase (Auth + Firestore + Cloud Functions)**
 
 - `users/{uid}/bookings/{id}` — individual booking documents
-- `users/{uid}/settings/main` — apartment prices, extras, and iCal feed URLs
+- `users/{uid}/settings/main` — apartment prices, extras, iCal feed URLs, and `lastSync` status
 - A real-time `onSnapshot()` listener keeps the bookings list in sync after login
+- `functions/` — Cloud Functions (Node, Admin SDK) that fetch and parse the Airbnb/Booking.com iCal feeds and upsert matching bookings; `syncIcalScheduled` runs hourly, `triggerIcalSync` is an `onCall` function the app invokes from the "Sincronizza ora" button. Bookings created this way carry `icalKey`/`icalUid` for dedup and are removed automatically if the corresponding event disappears from the feed (cancellation).
 
 **Auth flow:** Google Sign-In → `onAuthStateChanged` → sets up Firestore listener → renders app
 
@@ -37,7 +38,7 @@ The application is split across three files:
 - Calendario — monthly calendar with booking overlays
 - Prenotazioni — bookings list with filters (apartment, source); add/edit/delete
 - Prezzi — per-apartment nightly rate, cleaning fee, deposit
-- Sincronizzazione — iCal feed URLs input + calendar export
+- Sincronizzazione — iCal feed URLs input, automatic hourly inbound sync + manual "Sincronizza ora" trigger, and calendar export
 - Backup — export all bookings and settings as a downloadable JSON file
 
 **Theme** preference is persisted in `localStorage`.
