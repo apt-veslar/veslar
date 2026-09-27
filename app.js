@@ -766,22 +766,31 @@ function parseImportCSV(text){
     return -1;
   };
 
-  const iGuest   = col(['guest name','nome ospite','guest']);
-  const iUnit    = col(['unit','appartamento','apt','appartment']);
-  const iCheckin = col(['arrival date','checkin','check-in','arrivo','arrival']);
-  const iCheckout= col(['departure date','checkout','check-out','partenza','departure']);
-  const iPrice   = col(['total price','prezzo totale','total reservation cost','importo','price']);
+  // Gli alias in italiano "nome dell'ospite", "data di inizio", ecc. sono le
+  // colonne dell'export prenotazioni di Airbnb (Prenotazioni → Esporta).
+  const iGuest   = col(['guest name','nome ospite',"nome dell'ospite",'guest']);
+  const iUnit    = col(['unit','appartamento','apt','appartment','annuncio','listing']);
+  const iCheckin = col(['arrival date','checkin','check-in','arrivo','arrival','data di inizio','start date']);
+  const iCheckout= col(['departure date','checkout','check-out','partenza','departure','data di fine','end date']);
+  const iPrice   = col(['total price','prezzo totale','total reservation cost','importo','price','guadagni','earnings']);
   const iSource  = col(['sales channel','fonte','channel','source']);
-  const iGuests  = col(['adults','adulti']);
+  const iGuests  = col(['adults','adulti','n. di adulti','# of adults']);
+  const iChildren= col(['children','bambini','n. di bambini','# of children']);
   const iNote    = col(['note','notes']);
+  const iCode    = col(['codice di conferma','confirmation code']);
+  const iStatus  = col(['stato','status']);
+  // L'export Airbnb non ha una colonna "fonte": lo si riconosce dal codice di conferma.
+  const defaultSource = iCode>=0 ? 'airbnb' : 'manual';
 
   if(iCheckin<0 || iCheckout<0){ alert('Impossibile trovare le colonne delle date (Arrival Date / Departure Date).'); return; }
 
+  // Oltre ai nomi interni, riconosce i titoli degli annunci Airbnb:
+  // Olbe = "Appartamento Veslar 102" (ex "Granvilla 102"), Poch = "Appartamento Benedetti 5 persone".
   const aptMap = (v) => {
     if(!v) return null;
     const s = v.toLowerCase().trim();
-    if(s==='olbe'||s==='apt 1'||s==='apt1'||s==='1') return 1;
-    if(s==='poch'||s==='apt 2'||s==='apt2'||s==='2') return 2;
+    if(s==='olbe'||s==='apt 1'||s==='apt1'||s==='1'||/\b102\b/.test(s)) return 1;
+    if(s==='poch'||s==='apt 2'||s==='apt2'||s==='2'||s.includes('benedetti')) return 2;
     return null;
   };
   const sourceMap = (v) => {
@@ -806,7 +815,7 @@ function parseImportCSV(text){
     return isNaN(n) ? 0 : n;
   };
 
-  const valid = [], skipped = [];
+  const valid = [], skipped = [], unknownApt = [];
   for(let i=1;i<lines.length;i++){
     const cells = splitCSVLine(lines[i], sep);
     const guest   = iGuest>=0 ? (cells[iGuest]||'').trim() : '';
@@ -814,15 +823,22 @@ function parseImportCSV(text){
     const checkin = parseDate(cells[iCheckin]||'');
     const checkout= parseDate(cells[iCheckout]||'');
     const price   = iPrice>=0 ? parsePrice(cells[iPrice]) : 0;
-    const source  = iSource>=0 ? sourceMap(cells[iSource]||'') : 'manual';
-    const gNum    = iGuests>=0 ? parseInt(cells[iGuests]||'0')||0 : 0;
+    const source  = iSource>=0 ? sourceMap(cells[iSource]||'') : defaultSource;
+    const gNum    = (iGuests>=0 ? parseInt(cells[iGuests]||'0')||0 : 0)
+                  + (iChildren>=0 ? parseInt(cells[iChildren]||'0')||0 : 0);
     const note    = iNote>=0  ? (cells[iNote]||'').trim() : '';
+    const code    = iCode>=0  ? (cells[iCode]||'').trim() : '';
+    const status  = iStatus>=0 ? (cells[iStatus]||'').toLowerCase() : '';
     const apt     = aptMap(unit);
 
     if(!checkin || !checkout){ skipped.push(i+1); continue; }
     if(new Date(checkout)<=new Date(checkin)){ skipped.push(i+1); continue; }
+    if(/cancel|annullat/.test(status)){ skipped.push(i+1); continue; }
+    // Senza colonna appartamento vale il default storico (Olbe); con una
+    // colonna non riconosciuta la riga viene saltata invece di finire su Olbe.
+    if(iUnit>=0 && !apt){ unknownApt.push(unit||`riga ${i+1}`); continue; }
 
-    valid.push({
+    const row = {
       apt: apt||1,
       guest: guest||'—',
       checkin, checkout,
@@ -830,38 +846,92 @@ function parseImportCSV(text){
       source,
       guestsNum: gNum,
       notes: note,
-      _unit: unit,
-    });
+    };
+    if(code) row.confirmationCode = code;
+    valid.push({ data: row, ...classifyImportRow(row) });
   }
 
   importRows = valid;
+  const toCreate = valid.filter(r=>r.action==='create').length;
+  const toUpdate = valid.filter(r=>r.action==='update').length;
+  const overlaps = valid.filter(r=>r.action==='overlap').length;
+  const dup = valid.length - toCreate - toUpdate - overlaps;
 
   const srcLabel={airbnb:'Airbnb',booking:'Booking',manual:'Manuale'};
+  const actionLabel={
+    create:'<span style="color:var(--apt1,#1D9E75);font-weight:600;">Nuova</span>',
+    update:'<span style="font-weight:600;">Completa dati</span>',
+    skip:'<span style="color:var(--text-ter);">Già presente</span>',
+    overlap:'<span style="color:var(--danger,#d33);">Da verificare</span>',
+  };
   document.getElementById('import-thead').innerHTML =
-    `<tr>${['Ospite','Apt','Check-in','Check-out','Importo €','Fonte'].map(h=>`<th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--text-sec);font-weight:600;border-bottom:0.5px solid var(--border);">${h}</th>`).join('')}</tr>`;
-  document.getElementById('import-tbody').innerHTML = valid.map((r,i)=>{
+    `<tr>${['Ospite','Apt','Check-in','Check-out','Importo €','Fonte','Esito'].map(h=>`<th style="padding:6px 8px;text-align:left;font-size:11px;color:var(--text-sec);font-weight:600;border-bottom:0.5px solid var(--border);">${h}</th>`).join('')}</tr>`;
+  document.getElementById('import-tbody').innerHTML = valid.map(({data:r, action, reason})=>{
     const aptBadge = `<span class="badge badge-apt${r.apt}">${r.apt===1?'Olbe':'Poch'}</span>`;
     const srcBadge = `<span class="badge badge-${r.source}">${srcLabel[r.source]}</span>`;
     const ci = new Date(r.checkin); const co = new Date(r.checkout);
     const fmtD = d => d.getDate()+'/'+(d.getMonth()+1)+'/'+d.getFullYear();
-    return `<tr style="border-bottom:0.5px solid var(--border);">
-      <td style="padding:5px 8px;">${r.guest}</td>
+    return `<tr style="border-bottom:0.5px solid var(--border);${action==='skip'||action==='overlap'?'opacity:0.55;':''}">
+      <td style="padding:5px 8px;">${escapeHtml(r.guest)}</td>
       <td style="padding:5px 8px;">${aptBadge}</td>
       <td style="padding:5px 8px;">${fmtD(ci)}</td>
       <td style="padding:5px 8px;">${fmtD(co)}</td>
       <td style="padding:5px 8px;">${r.amount?'€'+r.amount.toLocaleString('it'):'-'}</td>
       <td style="padding:5px 8px;">${srcBadge}</td>
+      <td style="padding:5px 8px;" title="${escapeHtml(reason||'')}">${actionLabel[action]}${reason?`<div style="font-size:11px;color:var(--text-sec);">${escapeHtml(reason)}</div>`:''}</td>
     </tr>`;
   }).join('');
 
   document.getElementById('import-parse-msg').textContent =
-    `Trovate ${valid.length} prenotazione${valid.length!==1?'i':''} pronte per l'importazione.`;
-  document.getElementById('import-skip-msg').textContent =
-    skipped.length ? `⚠️ ${skipped.length} riga${skipped.length>1?'he':''} saltata/e (dati mancanti o date non valide).` : '';
-  document.getElementById('import-confirm-btn').textContent = `Importa ${valid.length} prenotazion${valid.length!==1?'i':'e'}`;
+    `Trovate ${valid.length} prenotazion${valid.length!==1?'i':'e'}: ${toCreate} nuov${toCreate!==1?'e':'a'}, `+
+    `${toUpdate} da completare, ${dup} già present${dup!==1?'i':'e'} (non verranno duplicate)`+
+    (overlaps ? `, ${overlaps} sovrappost${overlaps!==1?'e':'a'} ad altre prenotazioni (non importat${overlaps!==1?'e':'a'}: controlla a mano).` : '.');
+  const warn = [];
+  if(skipped.length) warn.push(`⚠️ ${skipped.length} riga${skipped.length>1?'he':''} saltata/e (dati mancanti, date non valide o cancellate).`);
+  if(unknownApt.length) warn.push(`⚠️ Appartamento non riconosciuto, righe saltate: ${[...new Set(unknownApt)].join(', ')}.`);
+  document.getElementById('import-skip-msg').textContent = warn.join(' ');
+  const btn = document.getElementById('import-confirm-btn');
+  btn.textContent = toUpdate ? `Importa ${toCreate} e completa ${toUpdate}` : `Importa ${toCreate} prenotazion${toCreate!==1?'i':'e'}`;
+  btn.disabled = !(toCreate+toUpdate);
 
   showImportStep('parse');
   document.getElementById('import-overlay').classList.add('open');
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// Nomi segnaposto delle prenotazioni arrivate dalla sync iCal, che non
+// porta il nome reale dell'ospite: si possono sostituire con quello del CSV.
+const PLACEHOLDER_GUEST_RE = /^(—|-|ospite airbnb|ospite booking\.com|ospite|reserved|airbnb \(not available\))?$/i;
+
+// Confronta una riga del CSV con le prenotazioni esistenti dello stesso
+// appartamento. Stesso codice di conferma o stesse date = stessa prenotazione:
+// se le mancano importo/nome/ospiti li completa, altrimenti la salta. Date
+// sovrapposte ma diverse = probabile doppione, saltata e segnalata.
+function classifyImportRow(r){
+  const same = bookings.filter(b=>b.apt===r.apt);
+  const match = (r.confirmationCode && same.find(b=>b.confirmationCode===r.confirmationCode))
+    || same.find(b=>b.checkin===r.checkin && b.checkout===r.checkout);
+  if(match){
+    const patch = {};
+    if(!Number(match.amount) && r.amount) patch.amount = r.amount;
+    if(PLACEHOLDER_GUEST_RE.test((match.guest||'').trim()) && r.guest!=='—') patch.guest = r.guest;
+    if(!Number(match.guestsNum) && r.guestsNum) patch.guestsNum = r.guestsNum;
+    if(!match.confirmationCode && r.confirmationCode) patch.confirmationCode = r.confirmationCode;
+    const filled = Object.keys(patch).filter(k=>k!=='confirmationCode');
+    if(filled.length){
+      const names = {amount:'importo', guest:'nome', guestsNum:'n. ospiti'};
+      return { action:'update', match, patch, reason:'aggiunge '+filled.map(k=>names[k]).join(', ') };
+    }
+    return { action:'skip', match, patch, reason:'' };
+  }
+  const overlap = same.find(b=>b.checkin<r.checkout && r.checkin<b.checkout);
+  if(overlap){
+    return { action:'overlap', match:overlap, reason:`sovrapposta a ${overlap.guest||'—'} (${calcFmtDateIt(overlap.checkin)} – ${calcFmtDateIt(overlap.checkout)})` };
+  }
+  return { action:'create' };
 }
 
 function splitCSVLine(line, sep){
@@ -885,18 +955,26 @@ window.closeImport = function(){
 };
 
 window.confirmImport = async function(){
-  if(!importRows.length) return;
+  const todo = importRows.filter(r=>r.action==='create'||r.action==='update');
+  if(!todo.length) return;
   showImportStep('loading');
-  let ok=0, fail=0;
-  for(const r of importRows){
+  let created=0, updated=0, fail=0;
+  for(const r of todo){
     try {
-      const {_unit, ...data} = r;
-      await saveBookingDoc(data, null);
-      ok++;
+      if(r.action==='update'){
+        // saveBookingDoc ricollega il cliente dal nome: si passa quello finale.
+        await saveBookingDoc({ ...r.patch, guest: r.patch.guest || r.match.guest }, r.match.id);
+        updated++;
+      } else {
+        await saveBookingDoc(r.data, null);
+        created++;
+      }
     } catch(e){ fail++; console.error(e); }
   }
   importRows=[];
   document.getElementById('import-done-msg').textContent =
-    `${ok} prenotazion${ok!==1?'i importate':'e importata'} con successo!`+(fail?` (${fail} errori)`:' 🎉');
+    `${created} prenotazion${created!==1?'i importate':'e importata'}`+
+    (updated?`, ${updated} completat${updated!==1?'e':'a'}`:'')+
+    (fail?` (${fail} errori)`:' 🎉');
   showImportStep('done');
 };
