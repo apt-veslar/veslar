@@ -36,5 +36,7 @@ Il primo deploy crea anche il job di Cloud Scheduler per `syncIcalScheduled` (gi
 
 ## Limitazioni note
 
-- I feed Airbnb spesso non includono il nome dell'ospite per privacy: in quel caso la prenotazione viene creata con ospite "Ospite Airbnb"/"Ospite Booking.com", modificabile a mano (verrà però risovrascritta se il feed cambia).
-- Se modifichi a mano date/ospite di una prenotazione sincronizzata, la sync successiva la riallinea di nuovo al feed (il feed resta la fonte di verità).
+- I feed Airbnb non includono il nome dell'ospite per privacy (il titolo è solo "Reserved"): la prenotazione viene creata con ospite "Ospite Airbnb"/"Ospite Booking.com". Ospite, note e importo si possono completare a mano e la sync non li sovrascrive più.
+- Il feed resta la fonte di verità solo per le **date**: se le modifichi a mano, la sync successiva le riallinea al feed.
+- Airbnb toglie dal feed i soggiorni appena iniziano o finiscono. Per questo una prenotazione sparita dal feed viene cancellata solo se il check-in non è ancora arrivato (vera disdetta); quelle già iniziate o passate restano come storico.
+- Gli intervalli "Airbnb (Not available)" senza riferimento a una prenotazione (date bloccate, soggiorno minimo, calendario chiuso) non vengono importati.

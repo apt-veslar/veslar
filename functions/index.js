@@ -31,6 +31,9 @@ function icalTimeToISODate(t) {
 // reservation reference in the description. Those aren't guest bookings.
 const BLOCKED_SUMMARY_RE = /not available/i;
 const RESERVATION_REF_RE = /reservation/i;
+// Titoli generici senza nome dell'ospite (Airbnb usa "Reserved"): in quel
+// caso si usa il nome di fallback.
+const GENERIC_SUMMARY_RE = /^(reserved|closed|not available|)$/i;
 
 async function fetchAndParseFeed(url) {
   const res = await fetch(url);
@@ -55,6 +58,12 @@ async function fetchAndParseFeed(url) {
     });
   }
   return events;
+}
+
+// Data odierna (YYYY-MM-DD) nel fuso della struttura, confrontabile come
+// stringa con checkin/checkout delle prenotazioni.
+function todayISODate() {
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Europe/Rome' });
 }
 
 function normalizeNameKey(name) {
@@ -95,41 +104,47 @@ async function syncUserIcalFeeds(uid, settings) {
       existingSnap.forEach(doc => existingByUid.set(doc.data().icalUid, doc));
 
       for (const ev of events) {
-        const guest = ev.summary || GUEST_FALLBACK[source] || 'Ospite';
-        const customerId = await findOrCreateCustomerByNameAdmin(uid, guest);
-        const payload = {
-          apt,
-          source,
-          guest,
-          checkin: ev.checkin,
-          checkout: ev.checkout,
-          notes: ev.description || '',
-          icalKey: key,
-          icalUid: ev.uid,
-          customerId,
-        };
-
         const existingDoc = existingByUid.get(ev.uid);
         if (existingDoc) {
+          // Il feed resta la fonte di verità solo per le date: ospite e note
+          // possono essere completati a mano e non vanno sovrascritti.
           const data = existingDoc.data();
-          const changed = data.checkin !== payload.checkin
-            || data.checkout !== payload.checkout
-            || data.guest !== payload.guest
-            || (data.notes || '') !== payload.notes;
-          if (changed) {
-            await existingDoc.ref.set({ ...payload, updatedAt: new Date().toISOString() }, { merge: true });
+          if (data.checkin !== ev.checkin || data.checkout !== ev.checkout) {
+            await existingDoc.ref.set({
+              checkin: ev.checkin,
+              checkout: ev.checkout,
+              updatedAt: new Date().toISOString(),
+            }, { merge: true });
             stats.updated++;
           }
         } else {
-          await bookingsRef.add({ ...payload, createdAt: new Date().toISOString() });
+          const guest = GENERIC_SUMMARY_RE.test(ev.summary)
+            ? (GUEST_FALLBACK[source] || 'Ospite')
+            : ev.summary;
+          const customerId = await findOrCreateCustomerByNameAdmin(uid, guest);
+          await bookingsRef.add({
+            apt,
+            source,
+            guest,
+            checkin: ev.checkin,
+            checkout: ev.checkout,
+            notes: ev.description || '',
+            icalKey: key,
+            icalUid: ev.uid,
+            customerId,
+            createdAt: new Date().toISOString(),
+          });
           stats.added++;
         }
       }
 
       // Prenotazioni sincronizzate in precedenza ma non più presenti nel
-      // feed (es. cancellate su Airbnb/Booking) vengono rimosse.
+      // feed vengono rimosse solo se il soggiorno non è ancora iniziato
+      // (cancellazione). Airbnb toglie dal feed i soggiorni già iniziati o
+      // conclusi: quelli vanno conservati come storico.
+      const today = todayISODate();
       for (const [uidKey, doc] of existingByUid) {
-        if (!seenUids.has(uidKey)) {
+        if (!seenUids.has(uidKey) && doc.data().checkin > today) {
           await doc.ref.delete();
           stats.removed++;
         }

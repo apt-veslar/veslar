@@ -29,7 +29,7 @@ The application is split across three files:
 - `users/{uid}/bookings/{id}` — individual booking documents
 - `users/{uid}/settings/main` — apartment prices, extras, iCal feed URLs, and `lastSync` status
 - A real-time `onSnapshot()` listener keeps the bookings list in sync after login
-- `functions/` — Cloud Functions (Node, Admin SDK) that fetch and parse the Airbnb/Booking.com iCal feeds and upsert matching bookings; `syncIcalScheduled` runs hourly, `triggerIcalSync` is an `onCall` function the app invokes from the "Sincronizza ora" button. Bookings created this way carry `icalKey`/`icalUid` for dedup and are removed automatically if the corresponding event disappears from the feed (cancellation).
+- `functions/` — Cloud Functions (Node, Admin SDK) that fetch and parse the Airbnb/Booking.com iCal feeds and upsert matching bookings; `syncIcalScheduled` runs hourly, `triggerIcalSync` is an `onCall` function the app invokes from the "Sincronizza ora" button. Bookings created this way carry `icalKey`/`icalUid` for dedup and are removed automatically if the corresponding event disappears from the feed before check-in (cancellation); stays already started or past are kept, since Airbnb drops them from the feed. On re-sync only dates are updated — guest/notes/amount entered by hand are preserved.
 
 **Auth flow:** Google Sign-In → `onAuthStateChanged` → sets up Firestore listener → renders app
 
