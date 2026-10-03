@@ -43,4 +43,4 @@ The application is split across three files:
 
 **Theme** preference is persisted in `localStorage`.
 
-**PWA support** via `manifest.json` and icon assets at the root.
+**PWA support** via `manifest.json` (desktop, `index.html`) and `manifest.mobile.json` (`mobile.html`) plus icon assets at the root. There is no service worker. An app installed on a phone that launches `index.html` in standalone mode is redirected to `mobile.html` by an inline script in `index.html`'s `<head>` (append `?desktop` to opt out).
