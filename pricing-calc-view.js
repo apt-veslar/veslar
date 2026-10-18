@@ -2,16 +2,22 @@
 // mobile (mobile.js). They only return strings; each entry point puts them in
 // its own DOM.
 import {
-  calcSeasons, calcFmtEuro, calcFmtDateIt, CALC_LONG_STAY, CALC_MIN_PPN,
+  calcSeasons, calcFmtEuro, calcFmtDateIt, CALC_LONG_STAY, CALC_MIN_PPN, CALC_RECENT_YEARS, CALC_RECENT_MIN,
 } from './pricing-calc.js';
 
 const srcLabel = { airbnb:'Airbnb', booking:'Booking', manual:'Diretta' };
 const basisLabel = {
   storico: n=>`mediana di ${n} prenotazion${n===1?'e':'i'} dirett${n===1?'a':'e'}`,
-  altro: n=>`nessun dato: uso l'altro appartamento (${n})`,
+  altro: n=>`nessun dato: stimata dall'altro appartamento (${n})`,
   media: n=>`nessun dato per la stagione: stimata dalle altre stagioni (${n})`,
-  minimo: ()=>'nessun dato: minimo di €'+CALC_MIN_PPN,
+  minimo: ()=>'nessun dato',
 };
+// Second line under a rent row: where the rate comes from, and whether the
+// per-guest minimum lifted it.
+function basisNote(g, persons){
+  const b = basisLabel[g.basis](g.basisCount);
+  return g.atMinimum ? `${b} · applicato il minimo di €${CALC_MIN_PPN} × ${persons} pers.` : b;
+}
 
 function esc(s){
   return String(s??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -20,7 +26,7 @@ function esc(s){
 export function calcQuoteHtml(q){
   let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${q.nightsCount} notti · ${q.persons} person${q.persons===1?'a':'e'} · ${calcFmtDateIt(q.checkin)} → ${calcFmtDateIt(q.checkout)}</div>`;
   q.groups.forEach(g=>{
-    html += `<div class="price-row"><span>Affitto — ${g.label} (${g.count} notti × ${q.persons} pers. × ${calcFmtEuro(g.ppn)})<div style="font-size:11px;color:var(--text-ter);margin-top:2px;">${basisLabel[g.basis](g.basisCount)}</div></span><strong>${calcFmtEuro(g.total)}</strong></div>`;
+    html += `<div class="price-row"><span>Affitto — ${g.label} (${g.count} notti × ${calcFmtEuro(g.night)})<div style="font-size:11px;color:var(--text-ter);margin-top:2px;">${basisNote(g, q.persons)}</div></span><strong>${calcFmtEuro(g.total)}</strong></div>`;
   });
   if(q.longStayDiscount>0){
     html += `<div class="price-row"><span>Sconto soggiorno lungo (−${q.longStayPct}%, minimo €${CALC_MIN_PPN}/notte/persona)</span><strong style="color:var(--airbnb-text);white-space:nowrap;">−${calcFmtEuro(q.longStayDiscount)}</strong></div>`;
@@ -52,17 +58,17 @@ export function calcPlatformsHtml(q, model){
 
 export function calcHistoryHtml(model, apt, aptNames){
   const tiers = CALC_LONG_STAY.slice().reverse().map(t=>`−${t.pct}% da ${t.minNights} notti`).join(', ');
-  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;">Tariffe per notte per persona ricavate dalle prenotazioni dirette concluse di ${aptNames[apt]} (importo meno pulizie, diviso per notti e ospiti). Minimo €${CALC_MIN_PPN}; ${tiers}.</div>`;
+  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;">Affitto per notte di ${aptNames[apt]}: mediana delle prenotazioni dirette concluse (importo diviso per notti; contano gli ultimi ${CALC_RECENT_YEARS} anni quando hanno almeno ${CALC_RECENT_MIN} soggiorni, altrimenti tutti). Mai meno di €${CALC_MIN_PPN} a notte per persona; ${tiers}.</div>`;
   calcSeasons.forEach(s=>{
     const r = model.rates[apt][s.key];
-    html += `<div class="price-row"><span>${s.label}</span><strong>${r.ppn ? calcFmtEuro(r.ppn)+' <span style="font-weight:400;color:var(--text-sec);font-size:12px;">('+r.count+')</span>' : '<span style="font-weight:400;color:var(--text-sec);">nessun dato</span>'}</strong></div>`;
+    html += `<div class="price-row"><span>${s.label}</span><strong>${r.night ? calcFmtEuro(r.night)+' <span style="font-weight:400;color:var(--text-sec);font-size:12px;">('+r.count+')</span>' : '<span style="font-weight:400;color:var(--text-sec);">nessun dato</span>'}</strong></div>`;
   });
   const an = model.anomalies;
   html += `<div style="font-weight:600;margin:14px 0 6px;">Prenotazioni escluse dal calcolo (${an.length})</div>`;
   if(!an.length){
     html += `<div style="font-size:12px;color:var(--text-sec);">Nessuna.</div>`;
   } else {
-    html += `<div style="font-size:12px;color:var(--text-sec);margin-bottom:6px;">Importo a zero, molto basso o molto alto, oppure senza numero di ospiti. Tocca una riga per correggerla.</div>`;
+    html += `<div style="font-size:12px;color:var(--text-sec);margin-bottom:6px;">Importo a zero, sotto i €35 a notte (o €12 a persona) oppure sopra i €600 a notte. Tocca una riga per correggerla.</div>`;
     an.forEach(x=>{
       const b = x.booking;
       html += `<div class="price-row" style="cursor:pointer;font-size:13px;" onclick="editBooking('${esc(b.id)}')"><span>${esc(aptNames[x.apt])} · ${esc(b.guest||'—')} · ${calcFmtDateIt(b.checkin)} (${x.nights} notti, ${x.guests||'?'} osp.) · ${srcLabel[x.source]||esc(x.source)}<div style="font-size:11px;color:var(--text-ter);margin-top:2px;">${esc(x.reason)}</div></span><strong>${x.amount?calcFmtEuro(x.amount):'€0'}</strong></div>`;
@@ -76,7 +82,7 @@ export function calcSummaryText(d){
   lines.push(`Preventivo appartamento ${d.aptName}`);
   lines.push(`${calcFmtDateIt(d.checkin)} → ${calcFmtDateIt(d.checkout)} (${d.nightsCount} nott${d.nightsCount===1?'e':'i'}, ${d.persons} person${d.persons===1?'a':'e'})`);
   lines.push('');
-  d.groups.forEach(g=>lines.push(`${g.label} (${g.count} nott${g.count===1?'e':'i'} × ${d.persons} pers. × ${calcFmtEuro(g.ppn)}): ${calcFmtEuro(g.total)}`));
+  d.groups.forEach(g=>lines.push(`${g.label} (${g.count} nott${g.count===1?'e':'i'} × ${calcFmtEuro(g.night)}): ${calcFmtEuro(g.total)}`));
   if(d.longStayDiscount) lines.push(`Sconto soggiorno lungo (${d.longStayPct}%): -${calcFmtEuro(d.longStayDiscount)}`);
   if(d.discount) lines.push(`Sconto: -${calcFmtEuro(d.discount)}`);
   lines.push(`Pulizie: ${calcFmtEuro(d.cleaning)}`);

@@ -4,9 +4,13 @@
 // exactly one place.
 //
 // Prices are derived from past *direct* bookings: for each apartment and
-// season we take the median rent per night per person (amount minus the
-// cleaning fee, divided by nights and guests). Platform prices are the
-// direct price grossed up by the platform commission.
+// season we take the median rent per night (amount divided by nights; the
+// amounts imported from Rentlio are rent only, cleaning was a separate extra).
+// Historically the price barely moved with the number of guests, so the rate
+// is per apartment, with a floor of CALC_MIN_PPN per guest per night. Only the
+// last CALC_RECENT_YEARS years count when they have enough stays, so old
+// prices don't drag the quote down. Platform prices are the direct price
+// grossed up by the platform commission.
 
 export const CALC_CLEANING = { 1: 60, 2: 50 };       // € a soggiorno: Olbe, Poch
 export const CALC_LINENS_PER_PERSON = 10;            // € a persona, una tantum
@@ -15,10 +19,16 @@ export const CALC_MIN_PPN = 20;                      // € minimo per notte per
 export const CALC_LONG_STAY = [ { minNights: 7, pct: 10 }, { minNights: 5, pct: 5 } ];
 // Commissioni piattaforma di default (%), modificabili dal calcolatore.
 export const CALC_DEFAULT_COMMISSION = { airbnb: 15, booking: 18 };
-// Prenotazioni passate fuori da questa forchetta (€/notte/persona) sono
-// considerate incoerenti e non entrano nel calcolo.
-export const CALC_ANOMALY_LOW = CALC_MIN_PPN;
-export const CALC_ANOMALY_HIGH = 150;
+// Prenotazioni passate considerate incoerenti, escluse dal calcolo: sotto
+// €12 a persona o €35 ad appartamento per notte (parenti o importi
+// incompleti; in passato 15-19 € a persona per gruppi numerosi erano prezzi
+// reali), oppure sopra €600 a notte.
+export const CALC_ANOMALY_LOW_PPN = 12;
+export const CALC_ANOMALY_LOW_NIGHT = 35;
+export const CALC_ANOMALY_HIGH_NIGHT = 600;
+// Anni recenti usati per le tariffe, se hanno almeno CALC_RECENT_MIN soggiorni.
+export const CALC_RECENT_YEARS = 4;
+export const CALC_RECENT_MIN = 3;
 
 export const calcSeasons = [
   { key:'capodanno', label:'Capodanno', match:(m,d)=>(m===12&&d>=27)||(m===1&&d<=6) },
@@ -68,66 +78,74 @@ export function calcAnalyzeHistory(bookings, today=new Date()){
     const amount = Number(b.amount)||0;
     const guests = Number(b.guestsNum)||0;
     const source = b.source||'manual';
-    const base = { booking:b, apt, source, nights:nights.length, guests, amount };
+    const night = amount / nights.length;
+    const ppn = guests ? night/guests : null;
+    const base = { booking:b, apt, source, nights:nights.length, guests, amount, night, ppn };
     if(amount<=0){ anomalies.push({ ...base, reason:'importo a zero o mancante' }); return; }
-    if(!guests){ anomalies.push({ ...base, reason:'numero ospiti mancante' }); return; }
-    const rent = amount - CALC_CLEANING[apt];
-    const ppn = rent / nights.length / guests;
-    if(ppn < CALC_ANOMALY_LOW){ anomalies.push({ ...base, ppn, reason:`importo molto basso (${Math.round(ppn)} €/notte/persona)` }); return; }
-    if(ppn > CALC_ANOMALY_HIGH){ anomalies.push({ ...base, ppn, reason:`importo molto alto (${Math.round(ppn)} €/notte/persona)` }); return; }
+    if(night < CALC_ANOMALY_LOW_NIGHT){ anomalies.push({ ...base, reason:`importo molto basso (${Math.round(night)} €/notte)` }); return; }
+    if(ppn!==null && ppn < CALC_ANOMALY_LOW_PPN){ anomalies.push({ ...base, reason:`importo molto basso (${Math.round(ppn)} €/notte a persona)` }); return; }
+    if(night > CALC_ANOMALY_HIGH_NIGHT){ anomalies.push({ ...base, reason:`importo molto alto (${Math.round(night)} €/notte)` }); return; }
     // The stay counts for the season most of its nights fall in.
     const counts={};
     nights.forEach(n=>{ const k=calcGetSeason(n).key; counts[k]=(counts[k]||0)+1; });
     const season = Object.keys(counts).sort((a,b)=>counts[b]-counts[a])[0];
-    samples.push({ ...base, ppn, season });
+    samples.push({ ...base, season });
   });
   anomalies.sort((a,b)=>(a.booking.checkin<b.booking.checkin?1:-1));
   return { samples, anomalies };
 }
 
-// Median rate per night per person for each apartment and season, from direct
-// bookings, plus how platform bookings compared with direct ones.
+// Median rent per night for each apartment and season, from direct bookings,
+// plus how platform bookings compared with direct ones.
 export function calcBuildModel(bookings, today=new Date()){
   const { samples, anomalies } = calcAnalyzeHistory(bookings, today);
-  const direct = samples.filter(s=>s.source==='manual');
+  const recentFrom = (today.getFullYear()-CALC_RECENT_YEARS)+'-01-01';
+  const pick = list=>{
+    const recent = list.filter(s=>s.booking.checkin>=recentFrom);
+    return recent.length>=CALC_RECENT_MIN ? recent : list;
+  };
   const rates = {};
   [1,2].forEach(apt=>{
     rates[apt]={};
     calcSeasons.forEach(season=>{
-      const xs = direct.filter(s=>s.apt===apt && s.season===season.key).map(s=>s.ppn);
-      rates[apt][season.key] = { ppn: median(xs), count: xs.length };
+      const xs = pick(samples.filter(s=>s.source==='manual' && s.apt===apt && s.season===season.key)).map(s=>s.night);
+      rates[apt][season.key] = { night: median(xs), count: xs.length };
     });
   });
   const platformVsDirect = {};
   ['airbnb','booking'].forEach(src=>{
     const ratios=[];
     [1,2].forEach(apt=>calcSeasons.forEach(season=>{
-      const d = rates[apt][season.key].ppn;
-      const p = median(samples.filter(s=>s.source===src && s.apt===apt && s.season===season.key).map(s=>s.ppn));
+      const d = rates[apt][season.key].night;
+      const p = median(pick(samples.filter(s=>s.source===src && s.apt===apt && s.season===season.key)).map(s=>s.night));
       if(d && p) ratios.push(p/d);
     }));
     const r = median(ratios);
     platformVsDirect[src] = r===null ? null : { pct: Math.round((r-1)*100), pairs: ratios.length };
   });
-  return { rates, samples, anomalies, directCount: direct.length, platformVsDirect };
+  return { rates, samples, anomalies, directCount: samples.filter(s=>s.source==='manual').length, platformVsDirect };
 }
 
 // Rate for one apartment and season, falling back when there is no direct
-// history for it: same season on the other apartment, then this apartment's
+// history for it: same season on the other apartment (scaled by how the two
+// apartments compare in the seasons both have), then this apartment's
 // other seasons (the cheapest one for the low season, so a missing low season
-// is never priced like a high one), then the minimum.
+// is never priced like a high one), then only the per-guest minimum.
 export function calcRateFor(model, apt, seasonKey){
   const other = apt===1 ? 2 : 1;
   const own = model.rates[apt][seasonKey];
-  if(own.ppn) return { ppn: own.ppn, basis:'storico', count: own.count };
+  if(own.night) return { night: own.night, basis:'storico', count: own.count };
   const alt = model.rates[other][seasonKey];
-  if(alt.ppn) return { ppn: alt.ppn, basis:'altro', count: alt.count };
-  const seasonal = Object.values(model.rates[apt]).filter(r=>r.ppn);
-  if(seasonal.length){
-    const ppn = seasonKey==='bassa' ? Math.min(...seasonal.map(r=>r.ppn)) : median(seasonal.map(r=>r.ppn));
-    return { ppn, basis:'media', count: seasonal.reduce((n,r)=>n+r.count,0) };
+  if(alt.night){
+    const ratios = calcSeasons.map(s=>[model.rates[apt][s.key].night, model.rates[other][s.key].night]).filter(([x,y])=>x&&y).map(([x,y])=>x/y);
+    return { night: alt.night*(median(ratios)||1), basis:'altro', count: alt.count };
   }
-  return { ppn: CALC_MIN_PPN, basis:'minimo', count: 0 };
+  const seasonal = Object.values(model.rates[apt]).filter(r=>r.night);
+  if(seasonal.length){
+    const night = seasonKey==='bassa' ? Math.min(...seasonal.map(r=>r.night)) : median(seasonal.map(r=>r.night));
+    return { night, basis:'media', count: seasonal.reduce((n,r)=>n+r.count,0) };
+  }
+  return { night: 0, basis:'minimo', count: 0 };
 }
 
 export function calcLongStayPct(nights){
@@ -145,8 +163,8 @@ export function calcFmtDateIt(iso){
 
 // Full quote computation. Returns null if checkout<=checkin or there are no
 // guests, otherwise the complete breakdown used both for on-screen rendering
-// and the "copy summary" clipboard text. Every guest, children included, pays
-// the per-person rate and the linens.
+// and the "copy summary" clipboard text. Every guest, children included,
+// counts for the per-guest minimum and the linens.
 export function calcComputeQuote({ model, apt, checkin, checkout, adults, children, linens, discountInput, commission }){
   const nights = eachNight(checkin, checkout);
   const a = adults||0, c = children||0;
@@ -154,18 +172,20 @@ export function calcComputeQuote({ model, apt, checkin, checkout, adults, childr
   if(!nights.length || !persons) return null;
 
   const pct = calcLongStayPct(nights.length);
+  const minNight = CALC_MIN_PPN*persons;
   const groups = [];
   nights.forEach(date=>{
     const season = calcGetSeason(date);
     let g = groups.find(g=>g.key===season.key);
     if(!g){
       const r = calcRateFor(model, apt, season.key);
-      const ppn = Math.max(r.ppn, CALC_MIN_PPN);
-      const ppnDiscounted = Math.max(ppn*(1-pct/100), CALC_MIN_PPN);
-      g = { key:season.key, label:season.label, count:0, ppn, ppnDiscounted, basis:r.basis, basisCount:r.count, total:0, totalDiscounted:0 };
+      const night = Math.max(r.night, minNight);
+      const nightDiscounted = Math.max(night*(1-pct/100), minNight);
+      g = { key:season.key, label:season.label, count:0, night, nightDiscounted, atMinimum: r.night<=minNight,
+            basis:r.basis, basisCount:r.count, total:0, totalDiscounted:0 };
       groups.push(g);
     }
-    g.count++; g.total+=g.ppn*persons; g.totalDiscounted+=g.ppnDiscounted*persons;
+    g.count++; g.total+=g.night; g.totalDiscounted+=g.nightDiscounted;
   });
 
   const rent = groups.reduce((s,g)=>s+g.total,0);
