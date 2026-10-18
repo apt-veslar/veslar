@@ -2,7 +2,7 @@
 // mobile (mobile.js). They only return strings; each entry point puts them in
 // its own DOM.
 import {
-  calcSeasons, calcFmtEuro, calcFmtDateIt, CALC_LONG_STAY, CALC_MIN_PPN, CALC_RECENT_YEARS, CALC_RECENT_MIN,
+  calcSeasons, calcFmtEuro, calcFmtDateIt, CALC_ANNUAL_INCREASE, CALC_MIN_PPN, CALC_RECENT_YEARS, CALC_RECENT_MIN,
 } from './pricing-calc.js';
 
 const srcLabel = { airbnb:'Airbnb', booking:'Booking', manual:'Diretta' };
@@ -28,9 +28,6 @@ export function calcQuoteHtml(q){
   q.groups.forEach(g=>{
     html += `<div class="price-row"><span>Affitto — ${g.label} (${g.count} notti × ${calcFmtEuro(g.night)})<div style="font-size:11px;color:var(--text-ter);margin-top:2px;">${basisNote(g, q.persons)}</div></span><strong>${calcFmtEuro(g.total)}</strong></div>`;
   });
-  if(q.longStayDiscount>0){
-    html += `<div class="price-row"><span>Sconto soggiorno lungo (−${q.longStayPct}%, minimo €${CALC_MIN_PPN}/notte/persona)</span><strong style="color:var(--airbnb-text);white-space:nowrap;">−${calcFmtEuro(q.longStayDiscount)}</strong></div>`;
-  }
   if(q.discount>0){
     html += `<div class="price-row"><span>Sconto</span><strong style="color:var(--airbnb-text);white-space:nowrap;">−${calcFmtEuro(q.discount)}</strong></div>`;
   }
@@ -57,8 +54,7 @@ export function calcPlatformsHtml(q, model){
 }
 
 export function calcHistoryHtml(model, apt, aptNames){
-  const tiers = CALC_LONG_STAY.slice().reverse().map(t=>`−${t.pct}% da ${t.minNights} notti`).join(', ');
-  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;">Affitto per notte di ${aptNames[apt]}: mediana delle prenotazioni dirette concluse (importo diviso per notti; contano gli ultimi ${CALC_RECENT_YEARS} anni quando hanno almeno ${CALC_RECENT_MIN} soggiorni, altrimenti tutti). Mai meno di €${CALC_MIN_PPN} a notte per persona; ${tiers}.</div>`;
+  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;">Affitto per notte di ${aptNames[apt]} ai prezzi ${model.year}: mediana delle prenotazioni dirette concluse (importo diviso per notti, rivalutato del ${CALC_ANNUAL_INCREASE}% per ogni anno trascorso; contano gli ultimi ${CALC_RECENT_YEARS} anni quando hanno almeno ${CALC_RECENT_MIN} soggiorni, altrimenti tutti). Per gli anni successivi si aggiunge un altro ${CALC_ANNUAL_INCREASE}% l'anno. Mai meno di €${CALC_MIN_PPN} a notte per persona.</div>`;
   calcSeasons.forEach(s=>{
     const r = model.rates[apt][s.key];
     html += `<div class="price-row"><span>${s.label}</span><strong>${r.night ? calcFmtEuro(r.night)+' <span style="font-weight:400;color:var(--text-sec);font-size:12px;">('+r.count+')</span>' : '<span style="font-weight:400;color:var(--text-sec);">nessun dato</span>'}</strong></div>`;
@@ -83,7 +79,6 @@ export function calcSummaryText(d){
   lines.push(`${calcFmtDateIt(d.checkin)} → ${calcFmtDateIt(d.checkout)} (${d.nightsCount} nott${d.nightsCount===1?'e':'i'}, ${d.persons} person${d.persons===1?'a':'e'})`);
   lines.push('');
   d.groups.forEach(g=>lines.push(`${g.label} (${g.count} nott${g.count===1?'e':'i'} × ${calcFmtEuro(g.night)}): ${calcFmtEuro(g.total)}`));
-  if(d.longStayDiscount) lines.push(`Sconto soggiorno lungo (${d.longStayPct}%): -${calcFmtEuro(d.longStayDiscount)}`);
   if(d.discount) lines.push(`Sconto: -${calcFmtEuro(d.discount)}`);
   lines.push(`Pulizie: ${calcFmtEuro(d.cleaning)}`);
   if(d.linensCost) lines.push(`Lenzuola e asciugamani (${d.totalGuests} persone): ${calcFmtEuro(d.linensCost)}`);
