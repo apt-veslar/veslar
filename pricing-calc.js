@@ -8,15 +8,18 @@
 // amounts imported from Rentlio are rent only, cleaning was a separate extra).
 // Historically the price barely moved with the number of guests, so the rate
 // is per apartment, with a floor of CALC_MIN_PPN per guest per night. Only the
-// last CALC_RECENT_YEARS years count when they have enough stays, so old
+// last CALC_RECENT_YEARS years count when they have enough stays, and every
+// past price is raised by CALC_ANNUAL_INCREASE per year since the stay, so old
 // prices don't drag the quote down. Platform prices are the direct price
 // grossed up by the platform commission.
 
 export const CALC_CLEANING = { 1: 60, 2: 50 };       // € a soggiorno: Olbe, Poch
 export const CALC_LINENS_PER_PERSON = 10;            // € a persona, una tantum
 export const CALC_MIN_PPN = 20;                      // € minimo per notte per persona
-// Sconto soggiorni lunghi, sull'affitto (la soglia più alta vince).
-export const CALC_LONG_STAY = [ { minNights: 7, pct: 10 }, { minNights: 5, pct: 5 } ];
+// Rivalutazione annua dei prezzi passati (%): inflazione e aumento dei costi
+// (riscaldamento, elettricità). Ogni soggiorno è portato ai prezzi dell'anno
+// del preventivo, composto per ogni anno trascorso.
+export const CALC_ANNUAL_INCREASE = 3;
 // Commissioni piattaforma di default (%), modificabili dal calcolatore.
 export const CALC_DEFAULT_COMMISSION = { airbnb: 15, booking: 18 };
 // Prenotazioni passate considerate incoerenti, escluse dal calcolo: sotto
@@ -102,6 +105,10 @@ export function calcAnalyzeHistory(bookings, today=new Date()){
 // plus how platform bookings compared with direct ones.
 export function calcBuildModel(bookings, today=new Date()){
   const { samples, anomalies } = calcAnalyzeHistory(bookings, today);
+  // Rates are expressed at this year's prices; calcComputeQuote moves them on
+  // to the year of the stay being quoted.
+  const year = today.getFullYear();
+  samples.forEach(s=>{ s.indexed = s.night*calcYearFactor(year-Number(s.booking.checkin.slice(0,4))); });
   const recentFrom = (today.getFullYear()-CALC_RECENT_YEARS)+'-01-01';
   const pick = list=>{
     const recent = list.filter(s=>s.booking.checkin>=recentFrom);
@@ -111,7 +118,7 @@ export function calcBuildModel(bookings, today=new Date()){
   [1,2].forEach(apt=>{
     rates[apt]={};
     calcSeasons.forEach(season=>{
-      const xs = pick(samples.filter(s=>s.source==='manual' && s.apt===apt && s.season===season.key)).map(s=>s.night);
+      const xs = pick(samples.filter(s=>s.source==='manual' && s.apt===apt && s.season===season.key)).map(s=>s.indexed);
       rates[apt][season.key] = { night: median(xs), count: xs.length };
     });
   });
@@ -120,13 +127,13 @@ export function calcBuildModel(bookings, today=new Date()){
     const ratios=[];
     [1,2].forEach(apt=>calcSeasons.forEach(season=>{
       const d = rates[apt][season.key].night;
-      const p = median(pick(samples.filter(s=>s.source===src && s.apt===apt && s.season===season.key)).map(s=>s.night));
+      const p = median(pick(samples.filter(s=>s.source===src && s.apt===apt && s.season===season.key)).map(s=>s.indexed));
       if(d && p) ratios.push(p/d);
     }));
     const r = median(ratios);
     platformVsDirect[src] = r===null ? null : { pct: Math.round((r-1)*100), pairs: ratios.length };
   });
-  return { rates, samples, anomalies, directCount: samples.filter(s=>s.source==='manual').length, platformVsDirect };
+  return { year, rates, samples, anomalies, directCount: samples.filter(s=>s.source==='manual').length, platformVsDirect };
 }
 
 // Rate for one apartment and season, falling back when there is no direct
@@ -151,9 +158,8 @@ export function calcRateFor(model, apt, seasonKey){
   return { night: 0, basis:'minimo', count: 0 };
 }
 
-export function calcLongStayPct(nights){
-  const tier = CALC_LONG_STAY.find(t=>nights>=t.minNights);
-  return tier ? tier.pct : 0;
+export function calcYearFactor(years){
+  return Math.pow(1+CALC_ANNUAL_INCREASE/100, Math.max(0, years));
 }
 
 export function calcFmtEuro(n){ return '€'+Math.round(n).toLocaleString('it-IT'); }
@@ -174,7 +180,7 @@ export function calcComputeQuote({ model, apt, checkin, checkout, adults, childr
   const persons = a+c;
   if(!nights.length || !persons) return null;
 
-  const pct = calcLongStayPct(nights.length);
+  const yearFactor = calcYearFactor(Number(checkin.slice(0,4))-model.year);
   const minNight = CALC_MIN_PPN*persons;
   const groups = [];
   nights.forEach(date=>{
@@ -182,23 +188,21 @@ export function calcComputeQuote({ model, apt, checkin, checkout, adults, childr
     let g = groups.find(g=>g.key===season.key);
     if(!g){
       const r = calcRateFor(model, apt, season.key);
-      const night = Math.max(r.night, minNight);
-      const nightDiscounted = Math.max(night*(1-pct/100), minNight);
-      g = { key:season.key, label:season.label, count:0, night, nightDiscounted, atMinimum: r.night<=minNight,
-            basis:r.basis, basisCount:r.count, total:0, totalDiscounted:0 };
+      const base = r.night*yearFactor;
+      g = { key:season.key, label:season.label, count:0, night: Math.max(base, minNight), atMinimum: base<=minNight,
+            basis:r.basis, basisCount:r.count, total:0 };
       groups.push(g);
     }
-    g.count++; g.total+=g.night; g.totalDiscounted+=g.nightDiscounted;
+    g.count++; g.total+=g.night;
   });
 
   const rent = groups.reduce((s,g)=>s+g.total,0);
-  const longStayDiscount = rent - groups.reduce((s,g)=>s+g.totalDiscounted,0);
-  const discount = Math.max(0, Math.min(discountInput||0, rent-longStayDiscount));
+  const discount = Math.max(0, Math.min(discountInput||0, rent));
   const cleaning = CALC_CLEANING[apt];
   const linensCost = linens ? CALC_LINENS_PER_PERSON*persons : 0;
   const taxNights = Math.min(nights.length, 7);
   const tax = 2*a*taxNights;
-  const stay = rent - longStayDiscount - discount + cleaning + linensCost;
+  const stay = rent - discount + cleaning + linensCost;
   const total = stay + tax;
 
   // On a platform the stay is grossed up so that, after the commission, the
@@ -211,7 +215,6 @@ export function calcComputeQuote({ model, apt, checkin, checkout, adults, childr
 
   return {
     nightsCount: nights.length, checkin, checkout, persons, rent, groups,
-    longStayPct: pct, longStayDiscount,
     adults: a, totalGuests: persons, cleaning, linensCost, taxNights, tax, discount, stay, total,
     platforms,
   };
