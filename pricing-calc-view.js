@@ -68,7 +68,7 @@ export function calcHistoryHtml(model, apt, aptNames){
   if(!an.length){
     html += `<div style="font-size:12px;color:var(--text-sec);">Nessuna.</div>`;
   } else {
-    html += `<div style="font-size:12px;color:var(--text-sec);margin-bottom:6px;">Importo a zero, sotto i €35 a notte (o €12 a persona) oppure sopra i €600 a notte. Tocca una riga per correggerla.</div>`;
+    html += `<div style="font-size:12px;color:var(--text-sec);margin-bottom:6px;">Importo a zero, sotto i €40 a notte (o €12 a persona) oppure sopra i €600 a notte. Tocca una riga per correggerla.</div>`;
     an.forEach(x=>{
       const b = x.booking;
       html += `<div class="price-row" style="cursor:pointer;font-size:13px;" onclick="editBooking('${esc(b.id)}')"><span>${esc(aptNames[x.apt])} · ${esc(b.guest||'—')} · ${calcFmtDateIt(b.checkin)} (${x.nights} notti, ${x.guests||'?'} osp.) · ${srcLabel[x.source]||esc(x.source)}<div style="font-size:11px;color:var(--text-ter);margin-top:2px;">${esc(x.reason)}</div></span><strong>${x.amount?calcFmtEuro(x.amount):'€0'}</strong></div>`;

@@ -20,11 +20,11 @@ export const CALC_LONG_STAY = [ { minNights: 7, pct: 10 }, { minNights: 5, pct: 
 // Commissioni piattaforma di default (%), modificabili dal calcolatore.
 export const CALC_DEFAULT_COMMISSION = { airbnb: 15, booking: 18 };
 // Prenotazioni passate considerate incoerenti, escluse dal calcolo: sotto
-// €12 a persona o €35 ad appartamento per notte (parenti o importi
+// €12 a persona o €40 ad appartamento per notte (parenti o importi
 // incompleti; in passato 15-19 € a persona per gruppi numerosi erano prezzi
 // reali), oppure sopra €600 a notte.
 export const CALC_ANOMALY_LOW_PPN = 12;
-export const CALC_ANOMALY_LOW_NIGHT = 35;
+export const CALC_ANOMALY_LOW_NIGHT = 40;
 export const CALC_ANOMALY_HIGH_NIGHT = 600;
 // Anni recenti usati per le tariffe, se hanno almeno CALC_RECENT_MIN soggiorni.
 export const CALC_RECENT_YEARS = 4;
