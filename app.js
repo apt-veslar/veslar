@@ -123,6 +123,8 @@ function renderCustomerDatalist(){
   el.innerHTML = customers.map(c=>`<option value="${c.name}"></option>`).join('');
 }
 
+// Lettere aperte nella pagina Clienti, conservate tra un render e l'altro.
+const openCustomerLetters = new Set();
 window.renderCustomers = function(){
   const el = document.getElementById('customers-list');
   if(!el) return;
@@ -139,12 +141,47 @@ window.renderCustomers = function(){
       return { c, count: cb.length, revenue, highlight, isFuture: !!future[0] };
     });
 
-  el.innerHTML = rows.length ? rows.map(x=>`
+  if(!rows.length){ el.innerHTML = '<div class="empty">Nessun cliente trovato</div>'; return; }
+
+  // Raggruppamento per iniziale del nome (accenti ignorati, non-lettere in "#").
+  const groups = new Map();
+  rows.sort((a,b)=>a.c.name.localeCompare(b.c.name,'it',{sensitivity:'base'}))
+    .forEach(x=>{
+      const ch = (x.c.name||'').trim().normalize('NFD').replace(/[\u0300-\u036f]/g,'').charAt(0).toUpperCase();
+      const letter = /[A-Z]/.test(ch) ? ch : '#';
+      if(!groups.has(letter)) groups.set(letter, []);
+      groups.get(letter).push(x);
+    });
+  const letters = [...groups.keys()].sort((a,b)=>a==='#'?1:b==='#'?-1:a.localeCompare(b));
+
+  const rowHtml = x=>`
     <div class="booking-row" style="cursor:pointer;" onclick="openCustomerPopup('${x.c.id}')">
       <span class="booking-guest">${x.c.name}</span>
       <span class="booking-dates">${x.count} prenotazion${x.count!==1?'i':'e'}${x.highlight?` · ${x.isFuture?'prossimo':'ultimo'} soggiorno ${fmtDate(x.highlight.checkin)}`:''}</span>
       <span class="booking-amount">€${x.revenue.toLocaleString('it')}</span>
-    </div>`).join('') : '<div class="empty">Nessun cliente trovato</div>';
+    </div>`;
+
+  // Con una ricerca attiva i gruppi sono tutti aperti; altrimenti si ricorda
+  // quali l'utente ha aperto, così il refresh realtime non li richiude.
+  el.innerHTML = `
+    <div class="customer-index">${letters.map(l=>`<button class="customer-index-btn" onclick="jumpToCustomerLetter('${l}')">${l}</button>`).join('')}</div>
+    ${letters.map(l=>`
+    <details class="customer-group" id="customer-group-${l==='#'?'other':l}" data-letter="${l}" ${q||openCustomerLetters.has(l)?'open':''} ontoggle="toggleCustomerLetter(this)">
+      <summary class="customer-group-title">${l} <span class="customer-group-count">${groups.get(l).length}</span></summary>
+      ${groups.get(l).map(rowHtml).join('')}
+    </details>`).join('')}`;
+};
+
+window.toggleCustomerLetter = function(det){
+  if(document.getElementById('customer-search')?.value.trim()) return;
+  const l = det.dataset.letter;
+  if(det.open) openCustomerLetters.add(l); else openCustomerLetters.delete(l);
+};
+window.jumpToCustomerLetter = function(l){
+  const det = document.getElementById(`customer-group-${l==='#'?'other':l}`);
+  if(!det) return;
+  det.open = true;
+  det.scrollIntoView({behavior:'smooth', block:'start'});
 };
 
 window.openCustomerPopup = function(id){
