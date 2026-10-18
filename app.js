@@ -761,6 +761,8 @@ window.triggerImport = function(){ document.getElementById('import-file-input').
 window.handleImportFile = function(input){
   const file = input.files[0];
   if(!file) return;
+  // Il file viene letto come testo: un .xlsx sarebbe solo spazzatura binaria.
+  if(/\.xlsx?$/i.test(file.name)){ alert('Il file Excel va prima salvato come CSV (File → Salva con nome → CSV).'); return; }
   const reader = new FileReader();
   reader.onload = function(e){
     try {
@@ -795,10 +797,12 @@ function parseImportCSV(text){
   const iPrice   = col(['total price','prezzo totale','total reservation cost','importo','price','guadagni','earnings']);
   const iSource  = col(['sales channel','fonte','channel','source']);
   const iGuests  = col(['adults','adulti','n. di adulti','# of adults']);
-  const iChildren= col(['children','bambini','n. di bambini','# of children']);
+  // Rentlio divide i bambini in due colonne (sotto e sopra i 12 anni): si sommano tutte.
+  const iChildren= ['children','bambini','n. di bambini','# of children','children under 12','children above 12']
+    .map(n=>col([n])).filter(i=>i>=0);
   const iNote    = col(['note','notes']);
-  const iCode    = col(['codice di conferma','confirmation code']);
-  const iStatus  = col(['stato','status']);
+  const iCode    = col(['codice di conferma','confirmation code','ota id']);
+  const iStatus  = col(['stato','status','reservation status']);
   // L'export Airbnb non ha una colonna "fonte": lo si riconosce dal codice di conferma.
   const defaultSource = iCode>=0 ? 'airbnb' : 'manual';
 
@@ -822,12 +826,16 @@ function parseImportCSV(text){
   };
   const parseDate = (v) => {
     if(!v) return null;
-    const m1 = v.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+    // gg/mm/aaaa, gg.mm.aaaa (export Rentlio fino al 2023) o gg-mm-aaaa
+    const m1 = v.trim().match(/^(\d{1,2})[\/.-](\d{1,2})[\/.-](\d{4})/);
     if(m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
-    const m2 = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
-    if(m2) return v.substring(0,10);
+    const m2 = v.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if(m2) return m2[0];
     return null;
   };
+  // Rentlio salva nome e note con entità HTML (l&#39;anno → l'anno).
+  const decode = (v) => v.replace(/&#(\d+);?/g, (_,n)=>String.fromCharCode(+n))
+    .replace(/&(amp|quot|lt|gt|apos);/g, (_,e)=>({amp:'&',quot:'"',lt:'<',gt:'>',apos:"'"}[e]));
   const parsePrice = (v) => {
     if(!v) return 0;
     const clean = String(v).replace(/\./g,'').replace(/,/g,'.').replace(/[^\d.]/g,'');
@@ -838,15 +846,15 @@ function parseImportCSV(text){
   const valid = [], skipped = [], unknownApt = [];
   for(let i=1;i<lines.length;i++){
     const cells = splitCSVLine(lines[i], sep);
-    const guest   = iGuest>=0 ? (cells[iGuest]||'').trim() : '';
+    const guest   = iGuest>=0 ? decode((cells[iGuest]||'').trim()) : '';
     const unit    = iUnit>=0  ? cells[iUnit]||'' : '';
     const checkin = parseDate(cells[iCheckin]||'');
     const checkout= parseDate(cells[iCheckout]||'');
     const price   = iPrice>=0 ? parsePrice(cells[iPrice]) : 0;
     const source  = iSource>=0 ? sourceMap(cells[iSource]||'') : defaultSource;
     const gNum    = (iGuests>=0 ? parseInt(cells[iGuests]||'0')||0 : 0)
-                  + (iChildren>=0 ? parseInt(cells[iChildren]||'0')||0 : 0);
-    const note    = iNote>=0  ? (cells[iNote]||'').trim() : '';
+                  + iChildren.reduce((t,c)=>t+(parseInt(cells[c]||'0')||0), 0);
+    const note    = iNote>=0  ? decode((cells[iNote]||'').trim()) : '';
     const code    = iCode>=0  ? (cells[iCode]||'').trim() : '';
     const status  = iStatus>=0 ? (cells[iStatus]||'').toLowerCase() : '';
     const apt     = aptMap(unit);
@@ -907,7 +915,7 @@ function parseImportCSV(text){
     `${toUpdate} da completare, ${dup} già present${dup!==1?'i':'e'} (non verranno duplicate)`+
     (overlaps ? `, ${overlaps} sovrappost${overlaps!==1?'e':'a'} ad altre prenotazioni (non importat${overlaps!==1?'e':'a'}: controlla a mano).` : '.');
   const warn = [];
-  if(skipped.length) warn.push(`⚠️ ${skipped.length} riga${skipped.length>1?'he':''} saltata/e (dati mancanti, date non valide o cancellate).`);
+  if(skipped.length) warn.push(`⚠️ ${skipped.length} rig${skipped.length>1?'he saltate':'a saltata'} (dati mancanti, date non valide o cancellate).`);
   if(unknownApt.length) warn.push(`⚠️ Appartamento non riconosciuto, righe saltate: ${[...new Set(unknownApt)].join(', ')}.`);
   document.getElementById('import-skip-msg').textContent = warn.join(' ');
   const btn = document.getElementById('import-confirm-btn');
