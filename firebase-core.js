@@ -1,6 +1,6 @@
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut as fbSignOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js';
-import { getFirestore, doc, collection, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, query, orderBy } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
+import { getFirestore, doc, collection, addDoc, deleteDoc, setDoc, getDoc, onSnapshot, query, orderBy, writeBatch } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
 import { getFunctions, httpsCallable } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-functions.js';
 
 const firebaseConfig = {
@@ -142,6 +142,33 @@ export async function findOrCreateCustomerByName(name) {
   const docRef = await addDoc(customersCol(), { name: trimmed, nameKey: key, createdAt: new Date().toISOString() });
   customers.push({ id: docRef.id, name: trimmed, nameKey: key });
   return docRef.id;
+}
+
+// Unisce più clienti in uno: le prenotazioni di `mergeIds` passano a `keepId`
+// e prendono il suo nome come ospite (altrimenti saveBookingDoc, alla prossima
+// modifica, ricreerebbe il cliente unito partendo dal vecchio nome). I clienti
+// uniti vengono poi eliminati. Batch da 400 operazioni (limite Firestore 500).
+export async function mergeCustomersDoc(keepId, mergeIds) {
+  const keep = customers.find(c => c.id === keepId);
+  if (!keep) throw new Error('Cliente da mantenere non trovato');
+  const ids = new Set(mergeIds.filter(id => id !== keepId));
+  const ops = [];
+  _bookingsCache.filter(b => ids.has(b.customerId)).forEach(b => ops.push(batch =>
+    batch.set(doc(db, 'users', currentUser.uid, 'bookings', b.id), { customerId: keepId, guest: keep.name, updatedAt: new Date().toISOString() }, { merge: true })));
+  ids.forEach(id => ops.push(batch => batch.delete(doc(db, 'users', currentUser.uid, 'customers', id))));
+  for (let i = 0; i < ops.length; i += 400) {
+    const batch = writeBatch(db);
+    ops.slice(i, i + 400).forEach(op => op(batch));
+    await batch.commit();
+  }
+  customers = customers.filter(c => !ids.has(c.id));
+}
+
+// Elimina un cliente solo se non ha prenotazioni collegate.
+export async function deleteCustomerDoc(id) {
+  if (_bookingsCache.some(b => b.customerId === id)) throw new Error('Il cliente ha prenotazioni collegate');
+  await deleteDoc(doc(db, 'users', currentUser.uid, 'customers', id));
+  customers = customers.filter(c => c.id !== id);
 }
 
 // One-time, idempotent pass linking legacy bookings (saved before the

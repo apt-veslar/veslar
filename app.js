@@ -1,7 +1,7 @@
 import {
   signInWithGoogle as coreSignInWithGoogle, signOutUser, watchAuth,
   subscribeBookings as coreSubscribeBookings, subscribeCustomers as coreSubscribeCustomers,
-  saveBookingDoc, deleteBookingDoc,
+  saveBookingDoc, deleteBookingDoc, mergeCustomersDoc, deleteCustomerDoc,
   loadSettingsDoc, saveSettingsDoc, runCustomerBackfillIfNeeded, triggerIcalSyncNow,
 } from './firebase-core.js';
 import { calcComputeQuote, calcBuildModel, calcFmtEuro, calcFmtDateIt, CALC_CLEANING, CALC_DEFAULT_COMMISSION } from './pricing-calc.js';
@@ -144,6 +144,10 @@ window.renderCustomers = function(){
       return { c, count: cb.length, revenue, highlight, isFuture: !!future[0] };
     });
 
+  // Toglie dalla selezione clienti spariti (uniti/eliminati, anche da un altro dispositivo).
+  [...mergeSelection].forEach(id=>{ if(!customers.some(c=>c.id===id)) mergeSelection.delete(id); });
+  updateCustomerMergeBar();
+
   if(!rows.length){ el.innerHTML = '<div class="empty">Nessun cliente trovato</div>'; return; }
 
   // Raggruppamento per iniziale del nome (accenti ignorati, non-lettere in "#").
@@ -157,11 +161,14 @@ window.renderCustomers = function(){
     });
   const letters = [...groups.keys()].sort((a,b)=>a==='#'?1:b==='#'?-1:a.localeCompare(b));
 
+  // In modalità unione il click seleziona il cliente invece di aprirne la scheda.
   const rowHtml = x=>`
-    <div class="booking-row" style="cursor:pointer;" onclick="openCustomerPopup('${x.c.id}')">
-      <span class="booking-guest">${x.c.name}</span>
+    <div class="booking-row${mergeMode&&mergeSelection.has(x.c.id)?' customer-selected':''}" style="cursor:pointer;" onclick="${mergeMode?`toggleCustomerMergeSelect('${x.c.id}')`:`openCustomerPopup('${x.c.id}')`}">
+      ${mergeMode?`<input type="checkbox" class="customer-check" tabindex="-1" ${mergeSelection.has(x.c.id)?'checked':''}>`:''}
+      <span class="booking-guest">${escapeHtml(x.c.name)}</span>
       <span class="booking-dates">${x.count} prenotazion${x.count!==1?'i':'e'}${x.highlight?` · ${x.isFuture?'prossimo':'ultimo'} soggiorno ${fmtDate(x.highlight.checkin)}`:''}</span>
       <span class="booking-amount">€${x.revenue.toLocaleString('it')}</span>
+      ${!mergeMode&&!x.count?`<button class="customer-del-btn" title="Elimina cliente" onclick="event.stopPropagation();deleteCustomer('${x.c.id}')">🗑</button>`:''}
     </div>`;
 
   // Con una ricerca attiva i gruppi sono tutti aperti; altrimenti si ricorda
@@ -202,11 +209,100 @@ window.openCustomerPopup = function(id){
     dateFmt:'full', srcLabel:true, showNotes:true, showEdit:true,
     editHandler:`closeCustomerPopup();editBooking('${b.id}')`,
   })).join('') : '<div class="empty">Nessuna prenotazione</div>';
+  document.getElementById('customer-popup-actions').innerHTML = cb.length ? ''
+    : `<button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">🗑 Elimina cliente</button>`;
   document.getElementById('customer-popup-overlay').classList.add('open');
 };
 
 window.closeCustomerPopup = function(){
   document.getElementById('customer-popup-overlay').classList.remove('open');
+};
+
+// ---- CUSTOMERS: MERGE / DELETE ----
+let mergeMode = false;
+const mergeSelection = new Set();
+function customerBookingCount(id){ return bookings.filter(b=>b.customerId===id).length; }
+
+function updateCustomerMergeBar(){
+  const bar = document.getElementById('customer-merge-bar');
+  if(!bar) return;
+  bar.classList.toggle('open', mergeMode);
+  document.getElementById('customer-merge-toggle').style.display = mergeMode ? 'none' : '';
+  const n = mergeSelection.size;
+  document.getElementById('customer-merge-count').textContent = n
+    ? `${n} client${n!==1?'i':'e'} selezionat${n!==1?'i':'o'}${n<2?' (selezionane almeno 2)':''}`
+    : 'Seleziona i clienti che sono la stessa persona';
+  document.getElementById('customer-merge-go').disabled = n < 2;
+}
+
+window.toggleCustomerMergeMode = function(){
+  mergeMode = !mergeMode;
+  mergeSelection.clear();
+  renderCustomers();
+};
+window.toggleCustomerMergeSelect = function(id){
+  if(mergeSelection.has(id)) mergeSelection.delete(id); else mergeSelection.add(id);
+  renderCustomers();
+};
+
+window.openCustomerMergePopup = function(){
+  const sel = customers.filter(c=>mergeSelection.has(c.id));
+  if(sel.length < 2) return;
+  // Proposto di default il nome più completo (più lungo), a parità quello con più prenotazioni.
+  const def = sel.slice().sort((a,b)=>b.name.trim().length-a.name.trim().length || customerBookingCount(b.id)-customerBookingCount(a.id))[0];
+  document.getElementById('customer-merge-options').innerHTML = sel.map(c=>{
+    const n = customerBookingCount(c.id);
+    return `<label class="customer-merge-option">
+      <input type="radio" name="customer-merge-keep" value="${c.id}" ${c.id===def.id?'checked':''} onchange="updateCustomerMergeSummary()">
+      <span>${escapeHtml(c.name)}</span>
+      <span>${n} prenotazion${n!==1?'i':'e'}</span>
+    </label>`;
+  }).join('');
+  updateCustomerMergeSummary();
+  document.getElementById('customer-merge-overlay').classList.add('open');
+};
+window.updateCustomerMergeSummary = function(){
+  const keepId = document.querySelector('input[name="customer-merge-keep"]:checked')?.value;
+  const keep = customers.find(c=>c.id===keepId);
+  if(!keep) return;
+  const others = customers.filter(c=>mergeSelection.has(c.id) && c.id!==keepId);
+  const moved = others.reduce((s,c)=>s+customerBookingCount(c.id),0);
+  document.getElementById('customer-merge-summary').innerHTML =
+    `${moved} prenotazion${moved!==1?'i':'e'} di ${others.map(c=>`<strong>${escapeHtml(c.name)}</strong>`).join(', ')} `+
+    `passeranno a <strong>${escapeHtml(keep.name)}</strong>, con questo nome come ospite. `+
+    `${others.length>1?'Gli altri clienti verranno eliminati':'L\'altro cliente verrà eliminato'}.`;
+};
+window.closeCustomerMergePopup = function(){
+  document.getElementById('customer-merge-overlay').classList.remove('open');
+};
+window.confirmCustomerMerge = async function(){
+  const keepId = document.querySelector('input[name="customer-merge-keep"]:checked')?.value;
+  const keep = customers.find(c=>c.id===keepId);
+  if(!keep) return;
+  showSaving(true);
+  try {
+    await mergeCustomersDoc(keepId, [...mergeSelection]);
+    closeCustomerMergePopup();
+    mergeMode = false;
+    mergeSelection.clear();
+    renderCustomers();
+    toast(`Clienti uniti in ${keep.name}`);
+  } catch(e) { console.error('merge customers', e); toast('Errore durante l\'unione: '+e.message); }
+  finally { showSaving(false); }
+};
+
+window.deleteCustomer = async function(id){
+  const c = customers.find(x=>x.id===id);
+  if(!c) return;
+  if(customerBookingCount(id)){ toast('Il cliente ha prenotazioni collegate'); return; }
+  if(!confirm(`Eliminare il cliente "${c.name}"?`)) return;
+  showSaving(true);
+  try {
+    await deleteCustomerDoc(id);
+    closeCustomerPopup();
+    toast('Cliente eliminato');
+  } catch(e) { console.error('delete customer', e); toast('Errore: '+e.message); }
+  finally { showSaving(false); }
 };
 
 // ---- HELPERS ----

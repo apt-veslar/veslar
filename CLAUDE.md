@@ -37,6 +37,7 @@ The application is split across three files:
 - Dashboard — monthly revenue and occupancy charts
 - Calendario — monthly calendar with booking overlays
 - Prenotazioni — bookings list with filters (apartment, source); add/edit/delete
+- Clienti — customers (`users/{uid}/customers`, linked to bookings by `customerId`) grouped by initial; "Unisci clienti" merges selected customers into the one whose name is kept (bookings move and take that name as `guest`, so a later edit doesn't recreate the old customer); customers with 0 bookings can be deleted
 - Prezzi — per-apartment nightly rate, cleaning fee, deposit
 - Calcolatore — quote calculator (`pricing-calc.js` math, `pricing-calc-view.js` HTML, shared by desktop and mobile). Rent per night is the median of past direct bookings per apartment and season (seasons: Capodanno, Natale, alta invernale, Ferragosto 8–22 Aug, alta estiva, bassa; amount is rent only, as imported from Rentlio; last 4 years when they have ≥3 stays), past prices raised 3%/year to the quote's year (inflation and costs), never below €20 per guest per night, no long-stay discount, fixed cleaning (Olbe 60, Poch 50), linens €10/person; platform prices gross up the direct price by an editable commission. Past bookings with zero amounts, under €40/night (or €12/guest/night) or over €600/night are excluded and listed in the tab; stays with guest "Noi" (the family itself) are ignored.
 - Sincronizzazione — iCal feed URLs input, automatic hourly inbound sync + manual "Sincronizza ora" trigger, and calendar export
