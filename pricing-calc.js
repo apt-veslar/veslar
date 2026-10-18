@@ -34,6 +34,8 @@ export const calcSeasons = [
   { key:'capodanno', label:'Capodanno', match:(m,d)=>(m===12&&d>=27)||(m===1&&d<=6) },
   { key:'natale', label:'Natale', match:(m,d)=>m===12&&d>=20&&d<=26 },
   { key:'alta_invernale', label:'Alta invernale', match:(m,d)=>(m===1&&d>=7)||m===2||m===3 },
+  // The two weeks around 15 August are the most requested of the summer.
+  { key:'ferragosto', label:'Ferragosto', match:(m,d)=>m===8&&d>=8&&d<=22 },
   { key:'alta_estiva', label:'Alta estiva', match:(m)=>m===7||m===8 },
   { key:'bassa', label:'Bassa/media stagione', match:()=>true },
 ];
