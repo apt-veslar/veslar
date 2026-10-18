@@ -19,7 +19,7 @@ export const CALC_MIN_PPN = 20;                      // € minimo per notte per
 // Rivalutazione annua dei prezzi passati (%): inflazione e aumento dei costi
 // (riscaldamento, elettricità). Ogni soggiorno è portato ai prezzi dell'anno
 // del preventivo, composto per ogni anno trascorso.
-export const CALC_ANNUAL_INCREASE = 4;
+export const CALC_ANNUAL_INCREASE = 3;
 // Commissioni piattaforma di default (%), modificabili dal calcolatore.
 export const CALC_DEFAULT_COMMISSION = { airbnb: 15, booking: 18 };
 // Prenotazioni passate considerate incoerenti, escluse dal calcolo: sotto
