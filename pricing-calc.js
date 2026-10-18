@@ -71,7 +71,8 @@ export function calcAnalyzeHistory(bookings, today=new Date()){
   const todayIso = isoDay(today);
   const samples=[], anomalies=[];
   (bookings||[]).forEach(b=>{
-    if(!b || b.checkout>todayIso) return;
+    // "Noi" marks the family's own stays: not a rental, so not history.
+    if(!b || b.checkout>todayIso || String(b.guest||'').trim().toLowerCase()==='noi') return;
     const nights = eachNight(b.checkin, b.checkout);
     if(!nights.length) return;
     const apt = Number(b.apt)===2 ? 2 : 1;
