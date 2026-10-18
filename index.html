@@ -201,6 +201,14 @@
     <div id="tab-clienti" class="section">
       <div class="filter-bar">
         <input class="form-input" id="customer-search" placeholder="Cerca cliente..." oninput="renderCustomers()" style="max-width:260px;">
+        <button class="btn btn-sm" id="customer-merge-toggle" onclick="toggleCustomerMergeMode()">Unisci clienti</button>
+      </div>
+      <div class="customer-merge-bar" id="customer-merge-bar">
+        <span id="customer-merge-count">Seleziona i clienti che sono la stessa persona</span>
+        <span style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="toggleCustomerMergeMode()">Annulla</button>
+          <button class="btn btn-primary btn-sm" id="customer-merge-go" onclick="openCustomerMergePopup()" disabled>Unisci</button>
+        </span>
       </div>
       <div class="card"><div id="customers-list"><div class="loading">Caricamento...</div></div></div>
     </div>
@@ -332,6 +340,24 @@
     </div>
     <div id="customer-popup-stats" style="display:flex;gap:16px;margin-bottom:12px;font-size:13px;color:var(--text-sec);"></div>
     <div id="customer-popup-bookings" style="max-height:320px;overflow-y:auto;"></div>
+    <div class="cal-popup-actions" id="customer-popup-actions"></div>
+  </div>
+</div>
+
+<!-- CUSTOMER MERGE POPUP -->
+<div class="cal-popup-overlay" id="customer-merge-overlay" onclick="if(event.target===this)closeCustomerMergePopup()">
+  <div class="cal-popup" style="width:420px;">
+    <div class="cal-popup-header">
+      <div class="cal-popup-title">Unisci clienti</div>
+      <button class="cal-popup-close" onclick="closeCustomerMergePopup()">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--text-sec);margin-bottom:8px;">Scegli il nome da mantenere:</div>
+    <div id="customer-merge-options"></div>
+    <div id="customer-merge-summary" style="font-size:13px;margin-top:12px;line-height:1.5;"></div>
+    <div class="cal-popup-actions">
+      <button class="btn btn-sm" onclick="closeCustomerMergePopup()">Annulla</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmCustomerMerge()">Conferma unione</button>
+    </div>
   </div>
 </div>
 
