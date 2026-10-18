@@ -6,6 +6,9 @@ import {
 } from './firebase-core.js';
 import { calcComputeQuote, calcBuildModel, calcFmtEuro, calcFmtDateIt, CALC_CLEANING, CALC_DEFAULT_COMMISSION } from './pricing-calc.js';
 import { calcQuoteHtml, calcPlatformsHtml, calcHistoryHtml, calcSummaryText } from './pricing-calc-view.js';
+import { syncCheckout } from './date-range.js';
+
+window.syncCheckout = syncCheckout;
 
 let bookings = [];
 let prices = { 1:{base:120,weekend:160,high:200,low:90}, 2:{base:100,weekend:140,high:170,low:80} };
@@ -470,6 +473,7 @@ window.openModal=function(){
   document.getElementById('modal-title').textContent = 'Nuova prenotazione';
   document.getElementById('m-checkin').value=new Date().toISOString().split('T')[0];
   document.getElementById('m-checkout').value='';
+  syncCheckout('m-checkin','m-checkout');
   document.getElementById('m-guest').value='';
   document.getElementById('m-amount').value='';
   document.getElementById('m-notes').value='';
@@ -488,6 +492,7 @@ window.editBooking=function(id){
   document.getElementById('m-guest').value = b.guest;
   document.getElementById('m-checkin').value = b.checkin;
   document.getElementById('m-checkout').value = b.checkout;
+  syncCheckout('m-checkin','m-checkout');
   document.getElementById('m-amount').value = b.amount||'';
   document.getElementById('m-source').value = b.source||'manual';
   document.getElementById('m-guests-num').value = b.guestsNum||'';
@@ -584,6 +589,7 @@ window.renderCalculator = function(){
     const t=new Date(); const t2=new Date(t); t2.setDate(t2.getDate()+7);
     document.getElementById('calc-checkin').value = t.toISOString().split('T')[0];
     document.getElementById('calc-checkout').value = t2.toISOString().split('T')[0];
+    syncCheckout('calc-checkin','calc-checkout');
     document.getElementById('calc-adults').value = 2;
     document.getElementById('calc-children').value = 0;
     document.getElementById('calc-discount').value = 0;

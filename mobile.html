@@ -130,7 +130,7 @@
       <div class="card">
         <div class="card-title">Date e ospiti</div>
         <div class="form-row-2" style="gap:16px;">
-          <div><label class="form-label">Check-in</label><input class="form-input" type="date" id="calc-checkin" onchange="renderCalculator()"></div>
+          <div><label class="form-label">Check-in</label><input class="form-input" type="date" id="calc-checkin" onchange="syncCheckout('calc-checkin','calc-checkout');renderCalculator()"></div>
           <div><label class="form-label">Check-out</label><input class="form-input" type="date" id="calc-checkout" onchange="renderCalculator()"></div>
         </div>
         <div class="form-row-2" style="gap:16px;margin-bottom:0;">
@@ -214,7 +214,7 @@
       <select class="form-input" id="m-apt" required><option value="">Seleziona...</option><option value="1">Olbe (Apt 1)</option><option value="2">Poch (Apt 2)</option></select></div>
     <div class="form-row"><label class="form-label">Nome ospite *</label><input class="form-input" id="m-guest" list="customer-names-list" placeholder="Nome e cognome" autocomplete="off"></div>
     <div class="form-row-2">
-      <div><label class="form-label">Check-in *</label><input class="form-input" id="m-checkin" type="date"></div>
+      <div><label class="form-label">Check-in *</label><input class="form-input" id="m-checkin" type="date" onchange="syncCheckout('m-checkin','m-checkout')"></div>
       <div><label class="form-label">Check-out *</label><input class="form-input" id="m-checkout" type="date"></div>
     </div>
     <div class="form-row-2">
