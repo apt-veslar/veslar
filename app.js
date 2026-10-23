@@ -7,6 +7,7 @@ import {
 import { calcComputeQuote, calcBuildModel, calcFmtEuro, calcFmtDateIt, CALC_CLEANING, CALC_DEFAULT_COMMISSION } from './pricing-calc.js';
 import { calcQuoteHtml, calcPlatformsHtml, calcHistoryHtml, calcSummaryText } from './pricing-calc-view.js';
 import { syncCheckout } from './date-range.js';
+import { attachMonthSwipe } from './cal-swipe.js';
 
 window.syncCheckout = syncCheckout;
 
@@ -435,6 +436,7 @@ window.calMonthStep=function(dir){
   else if(calMonth>11){calMonth=0;calYear++;}
   renderCalendar();
 };
+attachMonthSwipe(document.getElementById('cal-grid'), dir=>calMonthStep(dir));
 
 function populateCalDropdowns(){
   const mSel=document.getElementById('cal-month-select');

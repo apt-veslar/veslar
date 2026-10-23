@@ -35,7 +35,7 @@ The application is split across three files:
 
 **UI tabs (all logic inline in `index.html`):**
 - Dashboard — monthly revenue and occupancy charts
-- Calendario — monthly calendar with booking overlays
+- Calendario — monthly calendar with booking overlays; swipe/drag left-right (touch, mouse, trackpad) changes month via `cal-swipe.js`, shared by desktop and mobile
 - Prenotazioni — bookings list with filters (apartment, source); add/edit/delete
 - Clienti — customers (`users/{uid}/customers`, linked to bookings by `customerId`) grouped by initial; "Unisci clienti" merges selected customers into the one whose name is kept (bookings move and take that name as `guest`, so a later edit doesn't recreate the old customer); customers with 0 bookings can be deleted
 - Prezzi — per-apartment nightly rate, cleaning fee, deposit
