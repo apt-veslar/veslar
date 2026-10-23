@@ -78,3 +78,6 @@ html, body { height: 100%; }
 
 /* ---- TOAST: bottom-center, above the nav bar ---- */
 .toast { left: 50%; right: auto; bottom: calc(70px + env(safe-area-inset-bottom)); transform: translateX(-50%); }
+
+/* Calendar month swipe (cal-swipe.js) */
+.m-cal-grid { touch-action: pan-y; user-select: none; -webkit-user-select: none; }

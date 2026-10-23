@@ -204,3 +204,6 @@ select.form-input { cursor: pointer; }
 .page-btn:disabled { opacity:0.35; cursor:default; }
 .saving-indicator { font-size: 11px; color: var(--text-ter); display: none; }
 .saving-indicator.show { display: inline; }
+
+/* Calendar month swipe (cal-swipe.js) */
+.cal-grid { touch-action: pan-y; user-select: none; -webkit-user-select: none; }
