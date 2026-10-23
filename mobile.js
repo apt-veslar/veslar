@@ -24,7 +24,7 @@ const aptNames = { 1: 'Olbe', 2: 'Poch' };
 const srcLabelIt = { airbnb:'Airbnb', booking:'Booking', manual:'Manuale' };
 
 let dashYear = new Date().getFullYear();
-let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), calApt = 1;
+let calYear = new Date().getFullYear(), calMonth = new Date().getMonth(), calApt = 0; // opens on "Entrambi"
 let dayPopupDate = null;
 let editingId = null;
 window.bookingsPage = 1;
@@ -213,7 +213,8 @@ window.setApt = function(n){
   calApt = n;
   document.getElementById('m-aptab1').className = 'apt-tab'+(n===1?' active-apt1':'');
   document.getElementById('m-aptab2').className = 'apt-tab'+(n===2?' active-apt2':'');
-  document.getElementById('m-aptab0').className = 'apt-tab'+(n===0?' active-apt1':'');
+  document.getElementById('m-aptab0').className = 'apt-tab'+(n===0?' active-both':'');
+  document.getElementById('m-cal-grid').parentElement.className = 'card'+(n?' apt-frame-'+n:'');
   renderCalendar();
 };
 window.setCalMonth = function(v){ calMonth=parseInt(v); renderCalendar(); };
@@ -288,6 +289,7 @@ window.closeDayPopup = function(){
 window.renderBookings = function(page){
   if(page !== undefined) bookingsPage = page;
   const aptF=document.getElementById('m-filter-apt')?.value||'all';
+  tintAptSelect(document.getElementById('m-filter-apt'));
   const srcF=document.getElementById('m-filter-src')?.value||'all';
   let filtered=bookings.filter(b=>(aptF==='all'||b.apt===parseInt(aptF))&&(srcF==='all'||b.source===srcF));
   filtered.sort((a,b)=>new Date(b.checkin)-new Date(a.checkin));
@@ -339,6 +341,13 @@ window.renderBookings = function(page){
   el.innerHTML = html;
 };
 
+// Colour an apartment <select> with the chosen apartment's colour (neutral when none/all).
+window.tintAptSelect = function(el){
+  if(!el) return;
+  el.classList.remove('apt-select-1','apt-select-2');
+  if(el.value==='1'||el.value==='2') el.classList.add('apt-select-'+el.value);
+};
+
 // ---- MODAL ----
 window.openModal = function(){
   editingId = null;
@@ -351,6 +360,7 @@ window.openModal = function(){
   document.getElementById('m-notes').value = '';
   document.getElementById('m-guests-num').value = '';
   document.getElementById('m-apt').value = '';
+  tintAptSelect(document.getElementById('m-apt'));
   document.getElementById('m-source').value = 'manual';
   document.getElementById('modal-overlay').classList.add('open');
 };
@@ -361,6 +371,7 @@ window.editBooking = function(id){
   editingId = id;
   document.getElementById('modal-title').textContent = 'Modifica prenotazione';
   document.getElementById('m-apt').value = b.apt;
+  tintAptSelect(document.getElementById('m-apt'));
   document.getElementById('m-guest').value = b.guest;
   document.getElementById('m-checkin').value = b.checkin;
   document.getElementById('m-checkout').value = b.checkout;
@@ -440,7 +451,7 @@ window.savePrices = async function(){
 };
 
 // ---- CALCOLATORE ----
-let calcApt = 1;
+let calcApt = 0; // 0 = not chosen yet: the calculator asks for the apartment first
 let calcLinens = false;
 let calcInitialized = false;
 let calcSummaryData = null;
@@ -468,9 +479,21 @@ window.renderCalculator = function(){
     document.getElementById('calc-discount').value = 0;
   }
 
-  document.getElementById('calc-apt-toggle').innerHTML = [1,2].map(a=>
-    `<button class="apt-tab${calcApt===a?' active-apt'+a:''}" onclick="setCalcApt(${a})">${a===1?'Olbe (Apt 1)':'Poch (Apt 2)'}</button>`
+  const aptButtons = [1,2].map(a=>
+    `<button class="apt-tab${calcApt===a?' active-apt'+a:' apt-pick-btn-'+a}" onclick="setCalcApt(${a})">${a===1?'Olbe (Apt 1)':'Poch (Apt 2)'}</button>`
   ).join('');
+  const toggleEl = document.getElementById('calc-apt-toggle');
+  document.getElementById('tab-calcolatore').classList.toggle('calc-apt-1', calcApt===1);
+  document.getElementById('tab-calcolatore').classList.toggle('calc-apt-2', calcApt===2);
+  document.getElementById('calc-body').style.display = calcApt ? '' : 'none';
+  if(!calcApt){
+    toggleEl.innerHTML = `<div class="apt-pick"><div class="apt-pick-title">Per quale appartamento?</div>
+      <div class="apt-pick-sub">Scegli l'appartamento per calcolare il preventivo</div>
+      <div class="apt-tabs apt-tabs-lg">${aptButtons}</div></div>`;
+    calcSummaryData = null;
+    return;
+  }
+  toggleEl.innerHTML = `<div class="apt-tabs apt-tabs-lg">${aptButtons}</div>`;
 
   document.getElementById('calc-cleaning-value').textContent = calcFmtEuro(CALC_CLEANING[calcApt]);
   document.getElementById('calc-linens-toggle').className = 'toggle-switch'+(calcLinens?' on':'');
