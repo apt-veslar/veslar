@@ -46,7 +46,7 @@ html, body { height: 100%; }
 
 .m-nav-icon { width: 16px; height: 16px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
 .m-nav-icon-grid { display: grid; grid-template-columns: 7px 7px; grid-template-rows: 7px 7px; gap: 2px; }
-.m-nav-icon-grid i { background: currentColor; border-radius: 2px; display: block; }
+.m-nav-icon-grid i { width: 7px; height: 7px; background: currentColor; border-radius: 2px; display: block; }
 .m-nav-icon-cal i { width: 16px; height: 16px; border: 1.6px solid currentColor; border-radius: 3px; position: relative; display: block; }
 .m-nav-icon-cal i::after { content: ''; position: absolute; top: 3px; left: 0; right: 0; height: 1.6px; background: currentColor; }
 .m-nav-icon-list { flex-direction: column; gap: 3px; width: 16px; justify-content: center; }
