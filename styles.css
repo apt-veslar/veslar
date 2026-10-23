@@ -103,8 +103,26 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sa
 .cal-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
 .apt-tabs { display: flex; gap: 8px; margin-bottom: 1rem; }
 .apt-tab { padding: 6px 16px; font-size: 13px; cursor: pointer; border-radius: 20px; border: 0.5px solid var(--border-sec); background: none; color: var(--text-sec); font-weight: 500; }
-.apt-tab.active-apt1 { background: var(--apt1-bg); color: var(--apt1-text); border-color: var(--apt1); }
-.apt-tab.active-apt2 { background: var(--apt2-bg); color: var(--apt2-text); border-color: var(--apt2); }
+/* Selected apartment: solid fill in the apartment colour + check mark, so it can't be missed */
+.apt-tab.active-apt1, .apt-tab.active-apt2, .apt-tab.active-both { color: #fff; font-weight: 700; }
+.apt-tab.active-apt1 { background: var(--apt1); border-color: var(--apt1); box-shadow: 0 0 0 3px var(--apt1-bg); }
+.apt-tab.active-apt2 { background: var(--apt2); border-color: var(--apt2); box-shadow: 0 0 0 3px var(--apt2-bg); }
+.apt-tab.active-both { background: var(--text); color: var(--bg); border-color: var(--text); box-shadow: 0 0 0 3px var(--bg-sec); }
+.apt-tab.active-apt1::before, .apt-tab.active-apt2::before, .apt-tab.active-both::before { content: '✓ '; }
+.apt-tabs-lg .apt-tab { flex: 1; padding: 10px 16px; font-size: 15px; }
+.apt-frame-1 { box-shadow: inset 0 0 0 2px var(--apt1); }
+.apt-frame-2 { box-shadow: inset 0 0 0 2px var(--apt2); }
+.calc-apt-1 .card { border-left: 4px solid var(--apt1); }
+.calc-apt-2 .card { border-left: 4px solid var(--apt2); }
+.apt-pick { background: var(--bg); border: 2px dashed var(--border-sec); border-radius: var(--radius-lg); padding: 1.25rem; margin-bottom: 1rem; text-align: center; }
+.apt-pick-title { font-size: 16px; font-weight: 700; margin-bottom: 4px; }
+.apt-pick-sub { font-size: 12px; color: var(--text-sec); margin-bottom: 14px; }
+.apt-pick .apt-tabs { margin-bottom: 0; }
+.apt-pick-btn-1 { color: var(--apt1-text); border: 2px solid var(--apt1); }
+.apt-pick-btn-2 { color: var(--apt2-text); border: 2px solid var(--apt2); }
+.filter-select.apt-select-1, .form-input.apt-select-1 { background: var(--apt1); color: #fff; border-color: var(--apt1); font-weight: 700; }
+.filter-select.apt-select-2, .form-input.apt-select-2 { background: var(--apt2); color: #fff; border-color: var(--apt2); font-weight: 700; }
+.apt-select-1 option, .apt-select-2 option { background: var(--bg); color: var(--text); font-weight: 400; }
 .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
 .cal-day-name { text-align: center; font-size: 11px; color: var(--text-ter); padding: 4px 0; font-weight: 600; letter-spacing: 0.03em; }
 .cal-day { min-height: 68px; border-radius: 6px; border: 0.5px solid var(--border); padding: 4px 5px; cursor: pointer; background: var(--bg); }
