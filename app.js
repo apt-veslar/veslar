@@ -499,7 +499,10 @@ function renderCalendar(){
       const srcDot = `<span style="display:inline-block;width:6px;height:6px;border-radius:50%;background:${srcDotColor};margin-right:3px;vertical-align:middle;"></span>`;
       return `<div class="cal-booking cal-apt${b.apt}" onclick="event.stopPropagation();openCalPopup('${b.id}')" style="cursor:pointer;">${srcDot}${b.guest.split(' ')[0]}</div>`;
     }).join('');
-    html+=`<div class="cal-day${isToday?' today':''}${dayBooks.length?' occupied':''}"><div class="cal-day-num">${d}</div>${bHtml}</div>`;
+    // Tap on the free part of a day opens a new booking for that date (and the free apartment, if only one is)
+    const freeApts=aptFilter.filter(a=>!dayBooks.some(b=>b.apt===a));
+    const newClick=freeApts.length?` onclick="openModal('${ds}',${freeApts.length===1?freeApts[0]:"''"})"`:'';
+    html+=`<div class="cal-day${isToday?' today':''}${dayBooks.length?' occupied':''}"${newClick}><div class="cal-day-num">${d}</div>${bHtml}</div>`;
   }
   const total=startDow+daysInMonth;const rem=total%7===0?0:7-(total%7);
   for(let i=1;i<=rem;i++) html+=`<div class="cal-day other-month"><div class="cal-day-num">${i}</div></div>`;
@@ -575,17 +578,17 @@ window.tintAptSelect = function(el){
 };
 
 // ---- MODAL ----
-window.openModal=function(){
+window.openModal=function(checkin, apt){
   editingId = null;
   document.getElementById('modal-title').textContent = 'Nuova prenotazione';
-  document.getElementById('m-checkin').value=new Date().toISOString().split('T')[0];
+  document.getElementById('m-checkin').value=checkin||new Date().toISOString().split('T')[0];
   document.getElementById('m-checkout').value='';
   syncCheckout('m-checkin','m-checkout');
   document.getElementById('m-guest').value='';
   document.getElementById('m-amount').value='';
   document.getElementById('m-notes').value='';
   document.getElementById('m-guests-num').value='';
-  document.getElementById('m-apt').value='';
+  document.getElementById('m-apt').value=apt||'';
   tintAptSelect(document.getElementById('m-apt'));
   document.getElementById('m-source').value='manual';
   document.getElementById('modal-overlay').classList.add('open');

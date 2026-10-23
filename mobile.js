@@ -260,7 +260,7 @@ function renderCalendar(){
       const color = b.source==='airbnb' ? 'var(--airbnb-dot)' : b.source==='booking' ? 'var(--booking-dot)' : 'var(--manual-dot)';
       return `<div class="m-cal-dot" style="background:${color};"></div>`;
     }).join('');
-    html+=`<div class="m-cal-day${isToday?' today':''}${aptClass}" ${dayBooks.length?`onclick="openDayPopup('${ds}')"`:''}>
+    html+=`<div class="m-cal-day${isToday?' today':''}${aptClass}" ${dayBooks.length?`onclick="openDayPopup('${ds}')"`:`onclick="openModal('${ds}',${calApt||"''"})"`}>
       <div class="m-cal-day-num">${d}</div>
       <div class="m-cal-dots">${dots}</div>
     </div>`;
@@ -349,17 +349,17 @@ window.tintAptSelect = function(el){
 };
 
 // ---- MODAL ----
-window.openModal = function(){
+window.openModal = function(checkin, apt){
   editingId = null;
   document.getElementById('modal-title').textContent = 'Nuova prenotazione';
-  document.getElementById('m-checkin').value = new Date().toISOString().split('T')[0];
+  document.getElementById('m-checkin').value = checkin || new Date().toISOString().split('T')[0];
   document.getElementById('m-checkout').value = '';
   syncCheckout('m-checkin','m-checkout');
   document.getElementById('m-guest').value = '';
   document.getElementById('m-amount').value = '';
   document.getElementById('m-notes').value = '';
   document.getElementById('m-guests-num').value = '';
-  document.getElementById('m-apt').value = '';
+  document.getElementById('m-apt').value = apt || '';
   tintAptSelect(document.getElementById('m-apt'));
   document.getElementById('m-source').value = 'manual';
   document.getElementById('modal-overlay').classList.add('open');

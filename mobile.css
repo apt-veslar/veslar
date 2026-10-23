@@ -28,7 +28,7 @@ html, body { height: 100%; }
 /* ---- CALENDAR: day cell background = apartment, dots = source ---- */
 .m-cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
 .m-cal-day-name { text-align: center; font-size: 9px; color: var(--text-ter); padding: 4px 0; font-weight: 600; }
-.m-cal-day { min-height: 44px; border-radius: 6px; border: 0.5px solid var(--border); padding: 3px; cursor: default; background: var(--bg); display: flex; flex-direction: column; align-items: center; }
+.m-cal-day { min-height: 44px; border-radius: 6px; border: 0.5px solid var(--border); padding: 3px; cursor: pointer; background: var(--bg); display: flex; flex-direction: column; align-items: center; }
 .m-cal-day.cal-apt1, .m-cal-day.cal-apt2 { cursor: pointer; }
 .m-cal-day.other-month { opacity: 0.35; background: var(--bg-sec); cursor: default; }
 .m-cal-day.today { border: 1.5px solid var(--text); }
