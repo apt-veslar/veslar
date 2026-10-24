@@ -16,6 +16,10 @@
 export const CALC_CLEANING = { 1: 60, 2: 50 };       // € a soggiorno: Olbe, Poch
 export const CALC_LINENS_PER_PERSON = 10;            // € a persona, una tantum
 export const CALC_MIN_PPN = 20;                      // € minimo per notte per persona
+// Posti letto: le tariffe valgono per l'appartamento pieno; per ogni ospite in
+// meno si sconta l'affitto di CALC_FEWER_GUESTS_DISCOUNT %.
+export const CALC_CAPACITY = { 1: 7, 2: 5 };
+export const CALC_FEWER_GUESTS_DISCOUNT = 5;
 // Rivalutazione annua dei prezzi passati (%): inflazione e aumento dei costi
 // (riscaldamento, elettricità). Ogni soggiorno è portato ai prezzi dell'anno
 // del preventivo, composto per ogni anno trascorso.
@@ -33,10 +37,34 @@ export const CALC_ANOMALY_HIGH_NIGHT = 600;
 export const CALC_RECENT_YEARS = 4;
 export const CALC_RECENT_MIN = 3;
 
+// Martedì grasso falls 47 days before Easter (Gregorian computus).
+function carnevaleTuesday(year){
+  const a=year%19, b=Math.floor(year/100), c=year%100, d=Math.floor(b/4), e=b%4, f=Math.floor((b+8)/25),
+        g=Math.floor((b-f+1)/3), h=(19*a+b-d-g+15)%30, i=Math.floor(c/4), k=c%4, l=(32+2*e+2*i-h-k)%7,
+        m=Math.floor((a+11*h+22*l)/451), month=Math.floor((h+l-7*m+114)/31), day=((h+l-7*m+114)%31)+1;
+  return new Date(year, month-1, day-47);
+}
+// Carnival week: the seven nights from the Saturday before Martedì grasso.
+function isCarnevale(date){
+  const start = carnevaleTuesday(date.getFullYear());
+  start.setDate(start.getDate()-3);
+  const days = Math.round((new Date(date.getFullYear(), date.getMonth(), date.getDate())-start)/86400000);
+  return days>=0 && days<7;
+}
+
+// Seasons are matched in order, so the specific weeks come before the
+// periods that contain them. A season with no direct history for either
+// apartment falls back to `fallback`. Direct history is too thin to tell
+// carnival and January apart from the rest of the winter, so `atLeast` and
+// `atMost` bound them to a percentage of the season around them: carnival at
+// least 15% above the alta invernale, January at least 10% below it.
 export const calcSeasons = [
   { key:'capodanno', label:'Capodanno', match:(m,d)=>(m===12&&d>=27)||(m===1&&d<=6) },
   { key:'natale', label:'Natale', match:(m,d)=>m===12&&d>=20&&d<=26 },
-  { key:'alta_invernale', label:'Alta invernale', match:(m,d)=>(m===1&&d>=7)||m===2||m===3 },
+  { key:'carnevale', label:'Carnevale', match:(m,d,date)=>isCarnevale(date), fallback:'alta_invernale', atLeast:{ key:'alta_invernale', pct:15 } },
+  // After Epiphany schools restart and it is very cold: quiet until February.
+  { key:'gennaio', label:'Bassa invernale (gennaio)', match:(m,d)=>m===1&&d>=7, fallback:'bassa', atMost:{ key:'alta_invernale', pct:-10 } },
+  { key:'alta_invernale', label:'Alta invernale', match:(m)=>m===2||m===3 },
   // The two weeks around 15 August are the most requested of the summer.
   { key:'ferragosto', label:'Ferragosto', match:(m,d)=>m===8&&d>=8&&d<=22 },
   { key:'alta_estiva', label:'Alta estiva', match:(m)=>m===7||m===8 },
@@ -45,7 +73,7 @@ export const calcSeasons = [
 
 export function calcGetSeason(date){
   const m=date.getMonth()+1, d=date.getDate();
-  return calcSeasons.find(s=>s.match(m,d));
+  return calcSeasons.find(s=>s.match(m,d,date));
 }
 
 function isoDay(date){
@@ -138,10 +166,25 @@ export function calcBuildModel(bookings, today=new Date()){
 
 // Rate for one apartment and season, falling back when there is no direct
 // history for it: same season on the other apartment (scaled by how the two
-// apartments compare in the seasons both have), then this apartment's
-// other seasons (the cheapest one for the low season, so a missing low season
-// is never priced like a high one), then only the per-guest minimum.
+// apartments compare in the seasons both have), then the season's own
+// fallback season if it has one, then this apartment's other seasons (the
+// cheapest one for the low season, so a missing low season is never priced
+// like a high one), then only the per-guest minimum. Seasons with a bound
+// are then kept within it.
 export function calcRateFor(model, apt, seasonKey){
+  const r = rawRateFor(model, apt, seasonKey);
+  const season = calcSeasons.find(s=>s.key===seasonKey);
+  const bound = (b, keep)=>{
+    const ref = calcRateFor(model, apt, b.key);
+    const night = ref.night*(1+b.pct/100);
+    return ref.night && keep(night) ? { ...ref, night, basis:'come', from:b.key, pct:b.pct } : null;
+  };
+  return (season.atLeast && bound(season.atLeast, n=>n>r.night))
+      || (season.atMost && bound(season.atMost, n=>n<r.night))
+      || r;
+}
+
+function rawRateFor(model, apt, seasonKey){
   const other = apt===1 ? 2 : 1;
   const own = model.rates[apt][seasonKey];
   if(own.night) return { night: own.night, basis:'storico', count: own.count };
@@ -150,6 +193,8 @@ export function calcRateFor(model, apt, seasonKey){
     const ratios = calcSeasons.map(s=>[model.rates[apt][s.key].night, model.rates[other][s.key].night]).filter(([x,y])=>x&&y).map(([x,y])=>x/y);
     return { night: alt.night*(median(ratios)||1), basis:'altro', count: alt.count };
   }
+  const fallback = calcSeasons.find(s=>s.key===seasonKey).fallback;
+  if(fallback) return { ...calcRateFor(model, apt, fallback), basis:'come', from:fallback, pct:0 };
   const seasonal = Object.values(model.rates[apt]).filter(r=>r.night);
   if(seasonal.length){
     const night = seasonKey==='bassa' ? Math.min(...seasonal.map(r=>r.night)) : median(seasonal.map(r=>r.night));
@@ -173,7 +218,7 @@ export function calcFmtDateIt(iso){
 // Full quote computation. Returns null if checkout<=checkin or there are no
 // guests, otherwise the complete breakdown used both for on-screen rendering
 // and the "copy summary" clipboard text. Every guest, children included,
-// counts for the per-guest minimum and the linens.
+// counts for the per-guest minimum, the linens and the fewer-guests discount.
 export function calcComputeQuote({ model, apt, checkin, checkout, adults, children, linens, discountInput, commission }){
   const nights = eachNight(checkin, checkout);
   const a = adults||0, c = children||0;
@@ -181,6 +226,8 @@ export function calcComputeQuote({ model, apt, checkin, checkout, adults, childr
   if(!nights.length || !persons) return null;
 
   const yearFactor = calcYearFactor(Number(checkin.slice(0,4))-model.year);
+  const missing = Math.max(0, CALC_CAPACITY[apt]-persons);
+  const fewerGuestsPct = missing*CALC_FEWER_GUESTS_DISCOUNT;
   const minNight = CALC_MIN_PPN*persons;
   const groups = [];
   nights.forEach(date=>{
@@ -188,9 +235,9 @@ export function calcComputeQuote({ model, apt, checkin, checkout, adults, childr
     let g = groups.find(g=>g.key===season.key);
     if(!g){
       const r = calcRateFor(model, apt, season.key);
-      const base = r.night*yearFactor;
+      const base = r.night*yearFactor*(1-fewerGuestsPct/100);
       g = { key:season.key, label:season.label, count:0, night: Math.max(base, minNight), atMinimum: base<=minNight,
-            basis:r.basis, basisCount:r.count, total:0 };
+            basis:r.basis, basisCount:r.count, from:r.from, pct:r.pct, total:0 };
       groups.push(g);
     }
     g.count++; g.total+=g.night;
@@ -214,7 +261,7 @@ export function calcComputeQuote({ model, apt, checkin, checkout, adults, childr
   });
 
   return {
-    nightsCount: nights.length, checkin, checkout, persons, rent, groups,
+    nightsCount: nights.length, checkin, checkout, persons, rent, groups, capacity: CALC_CAPACITY[apt], fewerGuestsPct,
     adults: a, totalGuests: persons, cleaning, linensCost, taxNights, tax, discount, stay, total,
     platforms,
   };
