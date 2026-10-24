@@ -2,7 +2,8 @@
 // mobile (mobile.js). They only return strings; each entry point puts them in
 // its own DOM.
 import {
-  calcSeasons, calcFmtEuro, calcFmtDateIt, CALC_ANNUAL_INCREASE, CALC_MIN_PPN, CALC_RECENT_YEARS, CALC_RECENT_MIN,
+  calcSeasons, calcRateFor, calcFmtEuro, calcFmtDateIt, CALC_ANNUAL_INCREASE, CALC_MIN_PPN, CALC_RECENT_YEARS, CALC_RECENT_MIN,
+  CALC_CAPACITY, CALC_FEWER_GUESTS_DISCOUNT,
 } from './pricing-calc.js';
 
 const srcLabel = { airbnb:'Airbnb', booking:'Booking', manual:'Diretta' };
@@ -12,11 +13,15 @@ const basisLabel = {
   media: n=>`nessun dato per la stagione: stimata dalle altre stagioni (${n})`,
   minimo: ()=>'nessun dato',
 };
-// Second line under a rent row: where the rate comes from, and whether the
-// per-guest minimum lifted it.
-function basisNote(g, persons){
-  const b = basisLabel[g.basis](g.basisCount);
-  return g.atMinimum ? `${b} · applicato il minimo di €${CALC_MIN_PPN} × ${persons} pers.` : b;
+// "come Alta invernale +15%": a rate derived from another season.
+const fromLabel = r=>`come ${calcSeasons.find(s=>s.key===r.from).label}${r.pct ? ` ${r.pct>0?'+':''}${r.pct}%` : ''}`;
+// Second line under a rent row: where the rate comes from, the fewer-guests
+// discount, and whether the per-guest minimum lifted it.
+function basisNote(g, q){
+  const parts = [g.from ? fromLabel(g) : basisLabel[g.basis](g.basisCount)];
+  if(q.fewerGuestsPct && !g.atMinimum) parts.push(`sconto ${q.fewerGuestsPct}% per ${q.persons} ospiti su ${q.capacity}`);
+  if(g.atMinimum) parts.push(`applicato il minimo di €${CALC_MIN_PPN} × ${q.persons} pers.`);
+  return parts.join(' · ');
 }
 
 function esc(s){
@@ -26,7 +31,7 @@ function esc(s){
 export function calcQuoteHtml(q){
   let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:10px;">${q.nightsCount} notti · ${q.persons} person${q.persons===1?'a':'e'} · ${calcFmtDateIt(q.checkin)} → ${calcFmtDateIt(q.checkout)}</div>`;
   q.groups.forEach(g=>{
-    html += `<div class="price-row"><span>Affitto — ${g.label} (${g.count} notti × ${calcFmtEuro(g.night)})<div style="font-size:11px;color:var(--text-ter);margin-top:2px;">${basisNote(g, q.persons)}</div></span><strong>${calcFmtEuro(g.total)}</strong></div>`;
+    html += `<div class="price-row"><span>Affitto — ${g.label} (${g.count} notti × ${calcFmtEuro(g.night)})<div style="font-size:11px;color:var(--text-ter);margin-top:2px;">${basisNote(g, q)}</div></span><strong>${calcFmtEuro(g.total)}</strong></div>`;
   });
   if(q.discount>0){
     html += `<div class="price-row"><span>Sconto</span><strong style="color:var(--airbnb-text);white-space:nowrap;">−${calcFmtEuro(q.discount)}</strong></div>`;
@@ -54,10 +59,11 @@ export function calcPlatformsHtml(q, model){
 }
 
 export function calcHistoryHtml(model, apt, aptNames){
-  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;">Affitto per notte di ${aptNames[apt]} ai prezzi ${model.year}: mediana delle prenotazioni dirette concluse (importo diviso per notti, rivalutato del ${CALC_ANNUAL_INCREASE}% per ogni anno trascorso; contano gli ultimi ${CALC_RECENT_YEARS} anni quando hanno almeno ${CALC_RECENT_MIN} soggiorni, altrimenti tutti). Per gli anni successivi si aggiunge un altro ${CALC_ANNUAL_INCREASE}% l'anno. Mai meno di €${CALC_MIN_PPN} a notte per persona.</div>`;
+  let html = `<div style="font-size:12px;color:var(--text-sec);margin-bottom:8px;">Affitto per notte di ${aptNames[apt]} ai prezzi ${model.year}: mediana delle prenotazioni dirette concluse (importo diviso per notti, rivalutato del ${CALC_ANNUAL_INCREASE}% per ogni anno trascorso; contano gli ultimi ${CALC_RECENT_YEARS} anni quando hanno almeno ${CALC_RECENT_MIN} soggiorni, altrimenti tutti). Per gli anni successivi si aggiunge un altro ${CALC_ANNUAL_INCREASE}% l'anno. Le tariffe valgono per l'appartamento pieno (${CALC_CAPACITY[apt]} posti): ${CALC_FEWER_GUESTS_DISCOUNT}% di sconto per ogni ospite in meno. Mai meno di €${CALC_MIN_PPN} a notte per persona. Carnevale (la settimana dal sabato prima del martedì grasso) costa almeno il 15% in più dell'alta invernale, gennaio dopo l'Epifania almeno il 10% in meno.</div>`;
   calcSeasons.forEach(s=>{
-    const r = model.rates[apt][s.key];
-    html += `<div class="price-row"><span>${s.label}</span><strong>${r.night ? calcFmtEuro(r.night)+' <span style="font-weight:400;color:var(--text-sec);font-size:12px;">('+r.count+')</span>' : '<span style="font-weight:400;color:var(--text-sec);">nessun dato</span>'}</strong></div>`;
+    const r = calcRateFor(model, apt, s.key);
+    const note = r.from ? fromLabel(r) : r.basis==='storico' ? String(r.count) : r.basis==='minimo' ? '' : 'stimata';
+    html += `<div class="price-row"><span>${s.label}</span><strong>${r.night ? calcFmtEuro(r.night)+(note?' <span style="font-weight:400;color:var(--text-sec);font-size:12px;">('+note+')</span>':'') : '<span style="font-weight:400;color:var(--text-sec);">nessun dato</span>'}</strong></div>`;
   });
   const an = model.anomalies;
   html += `<div style="font-weight:600;margin:14px 0 6px;">Prenotazioni escluse dal calcolo (${an.length})</div>`;
