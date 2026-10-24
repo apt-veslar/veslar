@@ -52,7 +52,9 @@ html, body { height: 100%; }
 .m-nav-icon-list { flex-direction: column; gap: 3px; width: 16px; justify-content: center; }
 .m-nav-icon-list i { height: 2px; background: currentColor; border-radius: 1px; width: 100%; display: block; }
 .m-nav-icon-list i:nth-child(2) { width: 70%; }
-.m-nav-icon-coin { width: 16px; height: 16px; border-radius: 50%; border: 1.6px solid currentColor; font-size: 10px; font-weight: 700; line-height: 1; color: currentColor; }
+.m-nav-icon-user i { width: 16px; height: 16px; position: relative; display: block; }
+.m-nav-icon-user i::before { content: ''; position: absolute; top: 0; left: 4.5px; width: 7px; height: 7px; border: 1.6px solid currentColor; border-radius: 50%; box-sizing: border-box; }
+.m-nav-icon-user i::after { content: ''; position: absolute; bottom: 0; left: 1px; width: 14px; height: 7px; border: 1.6px solid currentColor; border-bottom: none; border-radius: 7px 7px 0 0; box-sizing: border-box; }
 /* Calculator body: rounded rect with a screen bar + a 2x2 keypad, drawn from
    a single element via ::before (screen) and ::after + box-shadow (4 keys). */
 .m-nav-icon-calc i { width: 13px; height: 16px; border: 1.6px solid currentColor; border-radius: 2.5px; position: relative; display: block; box-sizing: border-box; }
@@ -68,6 +70,17 @@ html, body { height: 100%; }
 .m-booking-actions { display: flex; gap: 8px; margin-top: 6px; }
 
 /* ---- BOOKINGS LIST: month group header ---- */
+/* ---- CLIENTI ---- */
+.m-customer-row { display: flex; align-items: center; gap: 10px; padding: 10px 0 10px 4px; border-bottom: 0.5px solid var(--border); font-size: 13px; cursor: pointer; }
+.m-customer-row:last-child { border-bottom: none; }
+.m-customer-row.customer-selected { background: var(--bg-sec); }
+.m-customer-main { flex: 1; min-width: 0; }
+.m-customer-top { display: flex; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+.m-customer-top .booking-guest { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+#tab-clienti .customer-index-btn { min-width: 30px; padding: 6px; }
+#tab-clienti .customer-merge-bar { top: 0; }
+#tab-clienti .customer-group { scroll-margin-top: 8px; }
+
 .m-month-header { font-size: 11px; font-weight: 700; color: var(--text-sec); text-transform: uppercase; letter-spacing: 0.03em; padding: 12px 0 6px; }
 .m-month-header:first-child { padding-top: 2px; }
 

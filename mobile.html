@@ -111,18 +111,6 @@
       <div class="card" style="padding:2px 14px;"><div id="m-bookings-list"><div class="loading">Caricamento...</div></div></div>
     </div>
 
-    <!-- PREZZI -->
-    <div id="tab-prezzi" class="m-section">
-      <div class="card"><div class="card-title">Olbe <span class="badge badge-apt1">Apt 1</span></div><div id="m-prices-apt1"></div></div>
-      <div class="card"><div class="card-title">Poch <span class="badge badge-apt2">Apt 2</span></div><div id="m-prices-apt2"></div></div>
-      <div class="card">
-        <div class="card-title">Tariffe extra</div>
-        <div class="price-row"><span>Pulizie</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="m-price-cleaning" value="60" min="0"><span class="price-unit">€/sogg.</span></div></div>
-        <div class="price-row"><span>Caparra</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="m-price-deposit" value="200" min="0"><span class="price-unit">€</span></div></div>
-      </div>
-      <button class="btn btn-primary" style="width:100%;" onclick="savePrices()">Salva tutte le tariffe</button>
-    </div>
-
     <!-- CALCOLATORE -->
     <div id="tab-calcolatore" class="m-section">
       <div id="calc-apt-toggle"></div>
@@ -182,6 +170,22 @@
       </div>
     </div>
 
+    <!-- CLIENTI -->
+    <div id="tab-clienti" class="m-section">
+      <div style="display:flex;gap:8px;margin-bottom:12px;">
+        <input class="form-input" id="customer-search" type="search" placeholder="Cerca cliente..." oninput="renderCustomers()" style="flex:1;">
+        <button class="btn btn-sm" id="customer-merge-toggle" onclick="toggleCustomerMergeMode()">Unisci</button>
+      </div>
+      <div class="customer-merge-bar" id="customer-merge-bar">
+        <span id="customer-merge-count">Seleziona i clienti che sono la stessa persona</span>
+        <div style="display:flex;gap:8px;">
+          <button class="btn btn-sm" onclick="toggleCustomerMergeMode()">Annulla</button>
+          <button class="btn btn-primary btn-sm" id="customer-merge-go" onclick="openCustomerMergePopup()" disabled>Unisci</button>
+        </div>
+      </div>
+      <div class="card" style="padding:2px 14px;"><div id="customers-list"><div class="loading">Caricamento...</div></div></div>
+    </div>
+
   </div>
 
   <!-- BOTTOM NAV -->
@@ -198,9 +202,9 @@
       <span class="m-nav-icon m-nav-icon-list"><i></i><i></i><i></i></span>
       <span class="m-nav-label">Prenotazioni</span>
     </button>
-    <button class="m-nav-btn" id="m-nav-prezzi" onclick="showTab('prezzi')">
-      <span class="m-nav-icon m-nav-icon-coin">€</span>
-      <span class="m-nav-label">Prezzi</span>
+    <button class="m-nav-btn" id="m-nav-clienti" onclick="showTab('clienti')">
+      <span class="m-nav-icon m-nav-icon-user"><i></i></span>
+      <span class="m-nav-label">Clienti</span>
     </button>
     <button class="m-nav-btn" id="m-nav-calcolatore" onclick="showTab('calcolatore')">
       <span class="m-nav-icon m-nav-icon-calc"><i></i></span>
@@ -242,6 +246,36 @@
       <button class="cal-popup-close" onclick="closeDayPopup()">✕</button>
     </div>
     <div id="day-popup-bookings"></div>
+  </div>
+</div>
+
+<!-- CUSTOMER DETAIL (bottom sheet) -->
+<div class="m-sheet-overlay" id="customer-popup-overlay" onclick="if(event.target===this)closeCustomerPopup()">
+  <div class="m-sheet" onclick="event.stopPropagation()">
+    <div class="cal-popup-header">
+      <div class="cal-popup-title" id="customer-popup-name">—</div>
+      <button class="cal-popup-close" onclick="closeCustomerPopup()">✕</button>
+    </div>
+    <div id="customer-popup-stats" style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:8px;font-size:13px;color:var(--text-sec);"></div>
+    <div id="customer-popup-bookings"></div>
+    <div class="cal-popup-actions" id="customer-popup-actions"></div>
+  </div>
+</div>
+
+<!-- CUSTOMER MERGE (bottom sheet) -->
+<div class="m-sheet-overlay" id="customer-merge-overlay" onclick="if(event.target===this)closeCustomerMergePopup()">
+  <div class="m-sheet" onclick="event.stopPropagation()">
+    <div class="cal-popup-header">
+      <div class="cal-popup-title">Unisci clienti</div>
+      <button class="cal-popup-close" onclick="closeCustomerMergePopup()">✕</button>
+    </div>
+    <div style="font-size:13px;color:var(--text-sec);margin-bottom:6px;">Scegli il nome da mantenere:</div>
+    <div id="customer-merge-options"></div>
+    <div id="customer-merge-summary" style="font-size:13px;margin-top:12px;line-height:1.5;"></div>
+    <div class="form-actions">
+      <button class="btn btn-sm" onclick="closeCustomerMergePopup()">Annulla</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmCustomerMerge()">Conferma unione</button>
+    </div>
   </div>
 </div>
 

@@ -1,7 +1,7 @@
 import {
   signInWithGoogle as coreSignInWithGoogle, signOutUser, watchAuth,
   subscribeBookings as coreSubscribeBookings, subscribeCustomers as coreSubscribeCustomers,
-  saveBookingDoc, deleteBookingDoc, loadSettingsDoc, saveSettingsDoc,
+  saveBookingDoc, deleteBookingDoc, mergeCustomersDoc, deleteCustomerDoc,
 } from './firebase-core.js';
 import { calcComputeQuote, calcBuildModel, calcFmtEuro, calcFmtDateIt, CALC_CLEANING, CALC_DEFAULT_COMMISSION } from './pricing-calc.js';
 import { calcQuoteHtml, calcPlatformsHtml, calcHistoryHtml, calcSummaryText } from './pricing-calc-view.js';
@@ -12,8 +12,6 @@ window.syncCheckout = syncCheckout;
 
 let bookings = [];
 let customers = [];
-let prices = { 1:{base:120,weekend:160,high:200,low:90}, 2:{base:100,weekend:140,high:170,low:80} };
-let extras = { cleaning:60, deposit:200 };
 let unsubBookings = null;
 let unsubCustomers = null;
 
@@ -50,11 +48,9 @@ window.signOut = async () => {
 watchAuth(async (user) => {
   document.getElementById('login-screen').style.display = 'none';
   document.getElementById('app-screen').style.display = 'flex';
-  await loadSettings();
   subscribeBookings();
   subscribeCustomers();
   renderDashboard();
-  renderPrices();
   try {
     const saved = localStorage.getItem('apt_theme');
     document.getElementById('theme-btn').textContent = saved === 'dark' ? '🌙' : '☀️';
@@ -64,29 +60,12 @@ watchAuth(async (user) => {
   document.getElementById('app-screen').style.display = 'none';
 });
 
-// ---- SETTINGS ----
-async function loadSettings() {
-  const d = await loadSettingsDoc();
-  if(d) {
-    if(d.prices) prices = d.prices;
-    if(d.extras) extras = d.extras;
-  }
-}
-
-async function saveSettings() {
-  showSaving(true);
-  try {
-    await saveSettingsDoc({ prices, extras });
-  } catch(e) { toast('Errore nel salvataggio'); }
-  showSaving(false);
-}
-
 // ---- BOOKINGS / CUSTOMERS REALTIME ----
 // Mobile never runs the customer backfill (see plan): running it from two
 // independently-loaded pages (desktop + mobile) would race across a network
 // round-trip and could create duplicate customer records. Desktop remains
 // the sole backfill owner; mobile only needs the customers subscription to
-// feed the guest-name autocomplete datalist.
+// feed the guest-name autocomplete datalist and the Clienti tab.
 function subscribeBookings() {
   if(unsubBookings) unsubBookings();
   unsubBookings = coreSubscribeBookings((arr) => {
@@ -95,6 +74,7 @@ function subscribeBookings() {
     renderBookings();
     if(document.getElementById('tab-calendario').classList.contains('active')) renderCalendar();
     if(document.getElementById('tab-calcolatore').classList.contains('active')) renderCalculator();
+    renderCustomers();
   });
 }
 
@@ -103,6 +83,7 @@ function subscribeCustomers() {
   unsubCustomers = coreSubscribeCustomers((arr) => {
     customers = arr;
     renderCustomerDatalist();
+    renderCustomers();
   });
 }
 
@@ -132,7 +113,7 @@ function bookingRowHtml(b, opts){
         <span class="booking-guest">${b.guest}</span>
       </div>
       <div class="m-booking-mid">
-        <span class="booking-dates">${fmtDate(b.checkin)} → ${fmtDate(b.checkout)}</span>
+        <span class="booking-dates">${opts.yearInDates?`${fmtDateFull(b.checkin)} → ${fmtDateFull(b.checkout)}`:`${fmtDate(b.checkin)} → ${fmtDate(b.checkout)}`}</span>
         <span class="booking-amount">€${Number(b.amount||0).toLocaleString('it')}</span>
       </div>
       ${b.notes?`<div class="m-booking-notes">${b.notes}</div>`:''}
@@ -153,7 +134,7 @@ window.showTab = function(t) {
   if(t==='calendario') renderCalendar();
   if(t==='dashboard') renderDashboard();
   if(t==='prenotazioni') renderBookings();
-  if(t==='prezzi') renderPrices();
+  if(t==='clienti') renderCustomers();
   if(t==='calcolatore') renderCalculator();
 };
 
@@ -421,33 +402,192 @@ window.deleteBooking = async function(id){
   showSaving(false);
 };
 
-// ---- PREZZI ----
-function renderPrices(){
-  [1,2].forEach(a=>{
-    const p=prices[a]||{base:120,weekend:160,high:200,low:90};
-    document.getElementById('m-prices-apt'+a).innerHTML=`
-      <div class="price-row"><span>Tariffa base</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="mp${a}-base" value="${p.base}" min="0"><span class="price-unit">€/notte</span></div></div>
-      <div class="price-row"><span>Weekend</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="mp${a}-weekend" value="${p.weekend}" min="0"><span class="price-unit">€/notte</span></div></div>
-      <div class="price-row"><span>Alta stagione</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="mp${a}-high" value="${p.high}" min="0"><span class="price-unit">€/notte</span></div></div>
-      <div class="price-row" style="border:none;"><span>Bassa stagione</span><div style="display:flex;align-items:center;gap:6px;"><input class="price-input" type="number" id="mp${a}-low" value="${p.low}" min="0"><span class="price-unit">€/notte</span></div></div>`;
-  });
-  document.getElementById('m-price-cleaning').value = extras.cleaning||60;
-  document.getElementById('m-price-deposit').value = extras.deposit||200;
+// ---- CLIENTI ----
+// Stessa logica del tab Clienti desktop (app.js), con righe e schede adattate al telefono.
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
 
-window.savePrices = async function(){
-  [1,2].forEach(a=>{
-    prices[a] = {
-      base:parseInt(document.getElementById('mp'+a+'-base').value)||0,
-      weekend:parseInt(document.getElementById('mp'+a+'-weekend').value)||0,
-      high:parseInt(document.getElementById('mp'+a+'-high').value)||0,
-      low:parseInt(document.getElementById('mp'+a+'-low').value)||0,
-    };
-  });
-  extras.cleaning = parseInt(document.getElementById('m-price-cleaning').value)||0;
-  extras.deposit = parseInt(document.getElementById('m-price-deposit').value)||0;
-  await saveSettings();
-  toast('Tariffe salvate!');
+// Lettere aperte nella pagina Clienti, conservate tra un render e l'altro.
+const openCustomerLetters = new Set();
+window.renderCustomers = function(){
+  const el = document.getElementById('customers-list');
+  if(!el) return;
+  const q = (document.getElementById('customer-search')?.value||'').trim().toLowerCase();
+  const now = new Date();
+  const rows = customers
+    .filter(c=>!q || c.name.toLowerCase().includes(q))
+    .map(c=>{
+      const cb = bookings.filter(b=>b.customerId===c.id);
+      const revenue = cb.reduce((s,b)=>s+Number(b.amount||0),0);
+      const future = cb.filter(b=>new Date(b.checkin)>=now).sort((a,b)=>new Date(a.checkin)-new Date(b.checkin));
+      const past = cb.filter(b=>new Date(b.checkin)<now).sort((a,b)=>new Date(b.checkin)-new Date(a.checkin));
+      const highlight = future[0] || past[0];
+      return { c, count: cb.length, revenue, highlight, isFuture: !!future[0] };
+    });
+
+  // Toglie dalla selezione clienti spariti (uniti/eliminati, anche da un altro dispositivo).
+  [...mergeSelection].forEach(id=>{ if(!customers.some(c=>c.id===id)) mergeSelection.delete(id); });
+  updateCustomerMergeBar();
+
+  if(!rows.length){ el.innerHTML = '<div class="empty">Nessun cliente trovato</div>'; return; }
+
+  // Raggruppamento per iniziale del nome (accenti ignorati, non-lettere in "#").
+  const groups = new Map();
+  rows.sort((a,b)=>a.c.name.localeCompare(b.c.name,'it',{sensitivity:'base'}))
+    .forEach(x=>{
+      const ch = (x.c.name||'').trim().normalize('NFD').replace(/[̀-ͯ]/g,'').charAt(0).toUpperCase();
+      const letter = /[A-Z]/.test(ch) ? ch : '#';
+      if(!groups.has(letter)) groups.set(letter, []);
+      groups.get(letter).push(x);
+    });
+  const letters = [...groups.keys()].sort((a,b)=>a==='#'?1:b==='#'?-1:a.localeCompare(b));
+
+  // In modalità unione il tap seleziona il cliente invece di aprirne la scheda.
+  const rowHtml = x=>`
+    <div class="m-customer-row${mergeMode&&mergeSelection.has(x.c.id)?' customer-selected':''}" onclick="${mergeMode?`toggleCustomerMergeSelect('${x.c.id}')`:`openCustomerPopup('${x.c.id}')`}">
+      ${mergeMode?`<input type="checkbox" class="customer-check" tabindex="-1" ${mergeSelection.has(x.c.id)?'checked':''}>`:''}
+      <div class="m-customer-main">
+        <div class="m-customer-top">
+          <span class="booking-guest">${escapeHtml(x.c.name)}</span>
+          <span class="booking-amount">€${x.revenue.toLocaleString('it')}</span>
+        </div>
+        <div class="booking-dates">${x.count} prenotazion${x.count!==1?'i':'e'}${x.highlight?` · ${x.isFuture?'prossimo':'ultimo'} ${fmtDateFull(x.highlight.checkin)}`:''}</div>
+      </div>
+      ${!mergeMode&&!x.count?`<button class="customer-del-btn" title="Elimina cliente" onclick="event.stopPropagation();deleteCustomer('${x.c.id}')">🗑</button>`:''}
+    </div>`;
+
+  // Con una ricerca attiva i gruppi sono tutti aperti; altrimenti si ricorda
+  // quali l'utente ha aperto, così il refresh realtime non li richiude.
+  el.innerHTML = `
+    <div class="customer-index">${letters.map(l=>`<button class="customer-index-btn" onclick="jumpToCustomerLetter('${l}')">${l}</button>`).join('')}</div>
+    ${letters.map(l=>`
+    <details class="customer-group" id="customer-group-${l==='#'?'other':l}" data-letter="${l}" ${q||openCustomerLetters.has(l)?'open':''} ontoggle="toggleCustomerLetter(this)">
+      <summary class="customer-group-title">${l} <span class="customer-group-count">${groups.get(l).length}</span></summary>
+      ${groups.get(l).map(rowHtml).join('')}
+    </details>`).join('')}`;
+};
+
+window.toggleCustomerLetter = function(det){
+  if(document.getElementById('customer-search')?.value.trim()) return;
+  const l = det.dataset.letter;
+  if(det.open) openCustomerLetters.add(l); else openCustomerLetters.delete(l);
+};
+window.jumpToCustomerLetter = function(l){
+  const det = document.getElementById(`customer-group-${l==='#'?'other':l}`);
+  if(!det) return;
+  det.open = true;
+  det.scrollIntoView({behavior:'smooth', block:'start'});
+};
+
+window.openCustomerPopup = function(id){
+  const c = customers.find(x=>x.id===id);
+  if(!c) return;
+  const cb = bookings.filter(b=>b.customerId===id).sort((a,b)=>new Date(b.checkin)-new Date(a.checkin));
+  const revenue = cb.reduce((s,b)=>s+Number(b.amount||0),0);
+  const nights = cb.reduce((s,b)=>s+Math.round((new Date(b.checkout)-new Date(b.checkin))/86400000),0);
+  document.getElementById('customer-popup-name').textContent = c.name;
+  document.getElementById('customer-popup-stats').innerHTML = `
+    <span><strong>${cb.length}</strong> prenotazion${cb.length!==1?'i':'e'}</span>
+    <span><strong>€${revenue.toLocaleString('it')}</strong> ricavi</span>
+    <span><strong>${nights}</strong> notti</span>`;
+  document.getElementById('customer-popup-bookings').innerHTML = cb.length ? cb.map(b=>bookingRowHtml(b,{
+    yearInDates: true,
+    editHandler: `closeCustomerPopup();editBooking('${b.id}')`,
+  })).join('') : '<div class="empty">Nessuna prenotazione</div>';
+  document.getElementById('customer-popup-actions').innerHTML = cb.length ? ''
+    : `<button class="btn btn-danger btn-sm" onclick="deleteCustomer('${c.id}')">🗑 Elimina cliente</button>`;
+  document.getElementById('customer-popup-overlay').classList.add('open');
+};
+window.closeCustomerPopup = function(){
+  document.getElementById('customer-popup-overlay').classList.remove('open');
+};
+
+// ---- CLIENTI: UNISCI / ELIMINA ----
+let mergeMode = false;
+const mergeSelection = new Set();
+function customerBookingCount(id){ return bookings.filter(b=>b.customerId===id).length; }
+
+function updateCustomerMergeBar(){
+  const bar = document.getElementById('customer-merge-bar');
+  if(!bar) return;
+  bar.classList.toggle('open', mergeMode);
+  document.getElementById('customer-merge-toggle').style.display = mergeMode ? 'none' : '';
+  const n = mergeSelection.size;
+  document.getElementById('customer-merge-count').textContent = n
+    ? `${n} client${n!==1?'i':'e'} selezionat${n!==1?'i':'o'}${n<2?' (almeno 2)':''}`
+    : 'Seleziona i clienti che sono la stessa persona';
+  document.getElementById('customer-merge-go').disabled = n < 2;
+}
+
+window.toggleCustomerMergeMode = function(){
+  mergeMode = !mergeMode;
+  mergeSelection.clear();
+  renderCustomers();
+};
+window.toggleCustomerMergeSelect = function(id){
+  if(mergeSelection.has(id)) mergeSelection.delete(id); else mergeSelection.add(id);
+  renderCustomers();
+};
+
+window.openCustomerMergePopup = function(){
+  const sel = customers.filter(c=>mergeSelection.has(c.id));
+  if(sel.length < 2) return;
+  // Proposto di default il nome più completo (più lungo), a parità quello con più prenotazioni.
+  const def = sel.slice().sort((a,b)=>b.name.trim().length-a.name.trim().length || customerBookingCount(b.id)-customerBookingCount(a.id))[0];
+  document.getElementById('customer-merge-options').innerHTML = sel.map(c=>{
+    const n = customerBookingCount(c.id);
+    return `<label class="customer-merge-option">
+      <input type="radio" name="customer-merge-keep" value="${c.id}" ${c.id===def.id?'checked':''} onchange="updateCustomerMergeSummary()">
+      <span>${escapeHtml(c.name)}</span>
+      <span>${n} prenotazion${n!==1?'i':'e'}</span>
+    </label>`;
+  }).join('');
+  updateCustomerMergeSummary();
+  document.getElementById('customer-merge-overlay').classList.add('open');
+};
+window.updateCustomerMergeSummary = function(){
+  const keepId = document.querySelector('input[name="customer-merge-keep"]:checked')?.value;
+  const keep = customers.find(c=>c.id===keepId);
+  if(!keep) return;
+  const others = customers.filter(c=>mergeSelection.has(c.id) && c.id!==keepId);
+  const moved = others.reduce((s,c)=>s+customerBookingCount(c.id),0);
+  document.getElementById('customer-merge-summary').innerHTML =
+    `${moved} prenotazion${moved!==1?'i':'e'} di ${others.map(c=>`<strong>${escapeHtml(c.name)}</strong>`).join(', ')} `+
+    `passeranno a <strong>${escapeHtml(keep.name)}</strong>, con questo nome come ospite. `+
+    `${others.length>1?'Gli altri clienti verranno eliminati':'L\'altro cliente verrà eliminato'}.`;
+};
+window.closeCustomerMergePopup = function(){
+  document.getElementById('customer-merge-overlay').classList.remove('open');
+};
+window.confirmCustomerMerge = async function(){
+  const keepId = document.querySelector('input[name="customer-merge-keep"]:checked')?.value;
+  const keep = customers.find(c=>c.id===keepId);
+  if(!keep) return;
+  showSaving(true);
+  try {
+    await mergeCustomersDoc(keepId, [...mergeSelection]);
+    closeCustomerMergePopup();
+    mergeMode = false;
+    mergeSelection.clear();
+    renderCustomers();
+    toast(`Clienti uniti in ${keep.name}`);
+  } catch(e) { console.error('merge customers', e); toast('Errore durante l\'unione: '+e.message); }
+  finally { showSaving(false); }
+};
+
+window.deleteCustomer = async function(id){
+  const c = customers.find(x=>x.id===id);
+  if(!c) return;
+  if(customerBookingCount(id)){ toast('Il cliente ha prenotazioni collegate'); return; }
+  if(!confirm(`Eliminare il cliente "${c.name}"?`)) return;
+  showSaving(true);
+  try {
+    await deleteCustomerDoc(id);
+    closeCustomerPopup();
+    toast('Cliente eliminato');
+  } catch(e) { console.error('delete customer', e); toast('Errore: '+e.message); }
+  finally { showSaving(false); }
 };
 
 // ---- CALCOLATORE ----
